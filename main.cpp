@@ -1,53 +1,56 @@
 #include "stack.h"
 
 int main(){
+
     stack_t stack;
-    int error_code = 0;
 
     size_t size = 4;
 
-    error_code = ConstructStack(&stack, size);
+    ConstructStack(&stack, size);
+    CheckError(&stack);
 
-    error_code = Push(&stack, 15);
-    CheckError(&error_code);
+    Push(&stack, 15);
+    CheckError(&stack);
 
-    error_code = Push(&stack, 1111);
-    CheckError(&error_code);
+    Push(&stack, 1111);
+    CheckError(&stack);
 
-    error_code = Push(&stack, 223);
-    CheckError(&error_code);
+    Push(&stack, 223);
+    CheckError(&stack);
 
-    error_code = Push(&stack, 330);
-    CheckError(&error_code);
+    Push(&stack, 330);
+    CheckError(&stack);
 
-    error_code = Push(&stack, 230);
-    CheckError(&error_code);
+    Push(&stack, 230);
+    CheckError(&stack);
 
-    error_code = Push(&stack, 707);
-    CheckError(&error_code);
+    Push(&stack, 707);
+    CheckError(&stack);
 
-    error_code = Pop(&stack);
-    CheckError(&error_code);
+    Pop(&stack);
+    CheckError(&stack);
 
-    error_code = Pop(&stack);
-    CheckError(&error_code);
+    Pop(&stack);
+    CheckError(&stack);
 
-    error_code = Pop(&stack);
-    CheckError(&error_code);
+    Pop(&stack);
+    CheckError(&stack);
 
-    error_code = Pop(&stack);
-    CheckError(&error_code);
+    Pop(&stack);
+    CheckError(&stack);
 
-    error_code = Pop(&stack);
-    CheckError(&error_code);
+    Pop(&stack);
+    CheckError(&stack);
 
-    error_code = DestructStack(&stack);
-    CheckError(&error_code);
+    DestructStack(&stack);
+    CheckError(&stack);
 
-
+    DestructStack(&stack);
+    CheckError(&stack);
+    
     // DONT DESTRUCT STACK AGAIN PLEASE
-    // error_code = DestructStack(&stack);
-    // CheckError(&error_code);
+    // DestructStack(&stack);
+    // CheckError(&stack);;
 
 
     return 0;
