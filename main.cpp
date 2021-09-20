@@ -47,11 +47,11 @@ int main(){
 
     DestructStack(&stack);
     CheckError(&stack);
-    
+
     // DONT DESTRUCT STACK AGAIN PLEASE
     // DestructStack(&stack);
     // CheckError(&stack);;
-
+    
 
     return 0;
 }

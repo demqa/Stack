@@ -7,14 +7,14 @@
 struct stack_t{
     int *top;
     size_t size;
-    size_t max_size;
+    size_t capacity;
     int error;
     
 };
 
 const int POISON = 0xFAFA;
 
-stack_t *ConstructStack(stack_t *stack, size_t max_size);
+stack_t *ConstructStack(stack_t *stack, size_t capacity);
 int DestructStack(stack_t *stack);
 int Pop(stack_t *stack);
 int Push(stack_t *stack, int elem);
@@ -26,7 +26,7 @@ int CheckError(stack_t *stack);
         case error_code:           \
             return #error_code;    
 
-#define stack_error(error_code) \
+#define STACK_ERROR(error_code) \
         stack->error = error_code; \
         return 0;
 

@@ -7,10 +7,12 @@
 
 stack_t *ConstructStack(stack_t *stack, size_t capacity){
     if (stack == nullptr){
+        // dump
         return nullptr;
     }
+
     if (capacity == 0){
-        stack->max_size = 0;
+        stack->capacity = 0;
         stack->size     = 0;
         stack->error    = 0;
         stack->top      = nullptr;
@@ -20,11 +22,11 @@ stack_t *ConstructStack(stack_t *stack, size_t capacity){
 
     stack->top = (int *) calloc(capacity, sizeof(int));
     if (stack->top == nullptr){
-        stack_error(CANT_ALLOCATE_MEMORY)
+        STACK_ERROR(CANT_ALLOCATE_MEMORY)
     }
 
     stack->size  = 0;
-    stack->max_size = capacity;
+    stack->capacity = capacity;
 
     stack->error = 0;
     return stack;
@@ -35,7 +37,7 @@ int Pop(stack_t *stack){
         return POISON;
     }
     if (stack->size == 0){
-        stack_error(STACK_IS_ALREADY_EMPTY)
+        STACK_ERROR(STACK_IS_ALREADY_EMPTY)
     }
     
     int top_elem = *stack->top;
@@ -52,13 +54,43 @@ int Pop(stack_t *stack){
 
 int Push(stack_t *stack, int elem){
     if (stack == nullptr){
+        
+        // LOG
+
         return POISON;
     }
 
     //  CHECK top nullptr
 
-    if (stack->size + 1 > stack->max_size){
-        stack_error(STACK_IS_OVERFLOWED) // REALLOC
+    if (stack->size + 1 > stack->capacity){
+        STACK_ERROR(STACK_IS_OVERFLOWED) // REALLOC
+    }
+
+    // REDO with MAXSIZE and other
+
+    if (stack->size == 0){
+        *stack->top = elem;
+    }
+    else{
+        ++stack->top;
+        *stack->top = elem;
+    }
+    
+    
+    ++stack->size;
+    stack->error = 0;
+}
+
+int Push__(stack_t *stack, int elem){
+    if (stack == nullptr){
+        // LOG
+        return POISON;
+    }
+
+    //  CHECK top nullptr
+
+    if (stack->size + 1 > stack->capacity){
+        STACK_ERROR(STACK_IS_OVERFLOWED) // REALLOC
     }
 
     // REDO with MAXSIZE and other
@@ -78,15 +110,19 @@ int Push(stack_t *stack, int elem){
 
 int DestructStack(stack_t *stack){
     if (stack == nullptr){
+
+        // LOG
+        // DUMP
+
         return POISON;
     }
     if (stack->top == nullptr){
-        if (stack->max_size == 0){
-            stack->max_size = 0xBEBA; 
+        if (stack->capacity == 0){
+            stack->capacity = 0xBEBA; 
             stack->size     = 0xDEDA;
             return 0;
         }
-        stack_error(STACK_TOP_IS_NULLPTR)
+        STACK_ERROR(STACK_TOP_IS_NULLPTR)
     }
 
 
@@ -95,15 +131,16 @@ int DestructStack(stack_t *stack){
         --stack->size;
         --stack->top;
     }
-    *stack->top = 0x70CA;
+    *stack->top = 0xC0CA;
 
     free(stack->top);
     stack->top = nullptr;
 
-    stack->max_size = 0x1E79;
-    stack->size     = 0xDAA7;
+    stack->capacity = 0xD1ED;
+    stack->size     = 0xF1FA;
 
     stack->error = 0;
+    
     return 0;
 }
 
@@ -124,9 +161,43 @@ const char *ErrorCodePhrase(int error_code){
     }
 }
 
-/// New function 
-/// Abort if STACK IS NULLPTR
-/// (My assert)
+
+
+int VerifyStack(stack_t *stack){ // TODO && USE THIS SOMEHOW
+    if (stack == nullptr){
+        return STACK_IS_NULLPTR;
+    }
+    
+    if (stack->size > stack->capacity){
+        // some error
+    }
+
+    if (stack->top == nullptr && stack->capacity != 0){
+        // top is dead
+    }
+
+    
+    //////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////
+
+}
+
+///
+    ////
+         ////
+              ////
+                   ////
+                        ////
+/// //// //// //// //// //// //// //// //// //// ////
+/// New function                  ////           ////
+/// Abort if STACK IS NULLPTR          ////      ////
+/// (My assert)                             //// ////
+/// //// //// //// //// //// //// //// //// //// ////
+                                                     ////
+                                                         ////
+                                                             ////
+/////////////////////////////////////////////////////////////////////
 
 
 
@@ -143,11 +214,15 @@ const char *ErrorCodePhrase(int error_code){
 
 int CheckError(stack_t *stack){
     if (stack == nullptr){
-        return POISON;
-        // MY_FUNC_
+        
+        // MY_MACRO
         // LOG_FILE
+        // __FILE__
+        // __LINE__
+        // __FUNC__
         // ??????
 
+        return POISON;
     }
 
     if (stack->error){
@@ -155,10 +230,12 @@ int CheckError(stack_t *stack){
         assert(phrase != nullptr);
 
         // LOG FILE
+
         printf("error №%x, %s\n", stack->error, phrase);
 
         stack->error = 0;
     }
+
     return 0;
 }
 
