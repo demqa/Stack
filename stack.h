@@ -9,8 +9,9 @@ struct stack_t{
     size_t size;
     size_t capacity;
     int error;
-    
 };
+
+const int ADDITIONAL_SIZE = 1;
 
 const int POISON = 0xFAFA;
 
@@ -19,8 +20,9 @@ int DestructStack(stack_t *stack);
 int Pop(stack_t *stack);
 int Push(stack_t *stack, int elem);
 const char *ErrorCodePhrase(int error_code);
-// int CheckError(int *error_code);
 int CheckError(stack_t *stack);
+
+int VerifyStack(stack_t *stack);
 
 #define case_of_switch(error_code) \
         case error_code:           \
@@ -30,8 +32,15 @@ int CheckError(stack_t *stack);
         stack->error = error_code; \
         return 0;
 
+
+// #define DUMP(slave){    \
+//     FILE *stream = fopen("LOG.OUT", "a");                        \
+//     fprintf(stream, "");              \                                                           
+// }
+
+
+
 enum ErrorCode{
-    // ADDITIONAL_SIZE = 50,
     STACK_IS_NULLPTR = 0x1000,
     STACK_WITH_ZERO_ELEMS,
     STACK_IS_ALREADY_EMPTY,
