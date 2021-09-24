@@ -5,7 +5,7 @@
 ////// HAVE TO CHECK REPEAT CALL NOT TO ALLOC MEMORY AGAIN ////////
 ///////////////////////////////////////////////////////////////////
 
-stack_t *ConstructStack(stack_t *stack, size_t capacity){
+stack_t *ConstructStack(stack_t *stack, size_t capacity = 0){
     if (stack == nullptr){
         // dump
         return nullptr;
@@ -48,9 +48,9 @@ stack_t *ConstructStack(stack_t *stack, size_t capacity){
 
 //     --stack->size;
 
-//     stack->error = 0;
-//     return top_elem;
+//     festtechreturn top_elem;
 // }
+
 
 int Pop(stack_t *stack){
     if (stack == nullptr){
