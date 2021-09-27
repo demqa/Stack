@@ -5,87 +5,73 @@
 ////// HAVE TO CHECK REPEAT CALL NOT TO ALLOC MEMORY AGAIN ////////
 ///////////////////////////////////////////////////////////////////
 
-stack_t *ConstructStack(stack_t *stack, size_t capacity = 0){
+stack_t *StackCtor(stack_t *stack, size_t capacity = 0){
     if (stack == nullptr){
         // dump
         return nullptr;
     }
 
+    //  check on empty or destructed stack
+    //  else exit
+
     if (capacity == 0){
         stack->capacity = 0;
         stack->size     = 0;
         stack->error    = 0;
-        stack->top      = nullptr;
+        stack->data     = nullptr;
 
         return stack;
     }
 
-    stack->top = (int *) calloc(capacity, sizeof(int));
-    if (stack->top == nullptr){
+    stack->data = (int *) calloc(capacity, sizeof(int));
+    if (stack->data == nullptr){
         STACK_ERROR(CANT_ALLOCATE_MEMORY)
     }
 
-    stack->size  = 0;
+    stack->size     = 0;
     stack->capacity = capacity;
 
-    stack->error = 0;
+    stack->error    = 0;
+
     return stack;
 }
 
-// int Pop(stack_t *stack){
-//     if (stack == nullptr){
-//         return POISON;
-//     }
-//     if (stack->size == 0){
-//         STACK_ERROR(STACK_IS_ALREADY_EMPTY)
-//     }
-    
-//     int top_elem = *stack->top;
-//     *stack->top = 0;
-//     if (stack->size != 1){
-//         --stack->top;
-//     }
-
-//     --stack->size;
-
-//     festtechreturn top_elem;
-// }
 
 
-int Pop(stack_t *stack){
+
+int StackPop(stack_t *stack){
     if (stack == nullptr){
         // DUMP
         return POISON;
     }
-    VerifyStack(stack);
+    StackVerify(stack);
 
     if (stack->size == 0){
         STACK_ERROR(STACK_IS_ALREADY_EMPTY)
     }
     
-    int top_elem = *--stack->top;
-    *stack->top = 0xA0AA;
-    stack->size--;
+    int data_elem = stack->data[stack->size--];
+    stack->data[stack->size + 1] = 0x1341;
 
-    VerifyStack(stack);
+    StackVerify(stack);
 
-    return top_elem;
+    return data_elem;
 }
 
 
 
-int Push(stack_t *stack, int elem){
+int StackPush(stack_t *stack, int elem){
     if (stack == nullptr){
         // DUMP
         return POISON;
     }
 
-    VerifyStack(stack);
+    StackVerify(stack);
     // VERIFIED THAT STACK IS NORMAL
 
-    if (stack->top == nullptr && stack->capacity == 0){
-        stack->top = (int *) calloc(ADDITIONAL_SIZE, sizeof(int));
-        if (stack->top == nullptr){
+    if (stack->data == nullptr && stack->capacity == 0){
+        stack->data = (int *) calloc(ADDITIONAL_SIZE, sizeof(int));
+        if (stack->data == nullptr){
             STACK_ERROR(CANT_ALLOCATE_MEMORY)
         }
     
@@ -93,46 +79,48 @@ int Push(stack_t *stack, int elem){
     }
     
     if (stack->size + 1 == stack->capacity){
-        int *root = stack->top - stack->size;
-        printf("root at %p; val = %d\n", root, *root);
-        
-        root = (int *) realloc(root, sizeof(int) * (ADDITIONAL_SIZE + stack->capacity));
-        
-        stack->top = root + stack->size;
+
+        // ResizeStack(); // hysteresis
+
+        int *try_realloc = (int *) realloc(stack->data, sizeof(int) * (ADDITIONAL_SIZE + stack->capacity));
+        if (try_realloc == nullptr){
+            STACK_ERROR(CANT_ALLOCATE_MEMORY);
+        }
         stack->capacity += ADDITIONAL_SIZE;
+
     }
 
-    *stack->top++ = elem;
-    stack->size++;
+    stack->data[stack->size++] = elem;
 
-    VerifyStack(stack);
+    StackVerify(stack);
 
+    return 0;
 }
 
-int DestructStack(stack_t *stack){
+int StackDtor(stack_t *stack){
     if (stack == nullptr){
         // LOG
         // DUMP
         return POISON;
     }
-    VerifyStack(stack);
+    StackVerify(stack);
 
-    if (stack->top == nullptr){
+    if (stack->data == nullptr){
         if (stack->capacity == 0){
             stack->capacity = 0xBEBA; 
             stack->size     = 0xDEDA;
             return 0;
         }
-        STACK_ERROR(STACK_TOP_IS_NULLPTR)
+        STACK_ERROR(STACK_DATA_IS_NULLPTR)
     }
 
 
     while (stack->size > 0){
-        *--stack->top = stack->size-- * 0x707A;
+        stack->data[stack->size] = stack->size-- * 0x707A;
     }
 
-    free(stack->top);
-    stack->top = nullptr;
+    free(stack->data);
+    stack->data = nullptr;
 
     stack->capacity = 0xD1ED;
     stack->size     = 0xF1FA;
@@ -149,8 +137,9 @@ const char *ErrorCodePhrase(int error_code){
         case_of_switch(STACK_IS_NULLPTR)
         case_of_switch(STACK_WITH_ZERO_ELEMS)
         case_of_switch(STACK_IS_ALREADY_EMPTY)
-        case_of_switch(STACK_IS_OVERFLOWED)
-        case_of_switch(STACK_TOP_IS_NULLPTR)
+
+        case_of_switch(STACK_DATA_IS_NULLPTR)
+        case_of_switch(STACK_DATA_IS_RUINED)
         
         case_of_switch(CANT_ALLOCATE_MEMORY)
 
@@ -161,32 +150,23 @@ const char *ErrorCodePhrase(int error_code){
 
 
 
-int VerifyStack(stack_t *stack){ // TODO && USE THIS SOMEHOW
+int StackVerify(stack_t *stack){ // TODO && USE THIS SOMEHOW
 
     if (stack->error){
-        // todo
+        return stack->error;
     }
-    // DUMP
 
     if (stack == nullptr){
-        
         return STACK_IS_NULLPTR;
     }
     
-    if (stack->size > stack->capacity){
-        // some error
-    }
-
-    if (stack->top == nullptr && stack->capacity != 0){
-        // top is dead
+    if (stack->size > stack->capacity || stack->data == nullptr && stack->capacity != 0){
+        return STACK_DATA_IS_RUINED;
     }
 
     stack->error = 0;
-    
-    //////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////
 
+    return stack->error;
 }
 
 ///

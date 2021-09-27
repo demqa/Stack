@@ -4,8 +4,11 @@
 #include <stdlib.h>
 #include <assert.h>
 
+
+
+
 struct stack_t{
-    int *top;
+    int *data;
     size_t size;
     size_t capacity;
     int error;
@@ -15,14 +18,14 @@ const int ADDITIONAL_SIZE = 1;
 
 const int POISON = 0xFAFA;
 
-stack_t *ConstructStack(stack_t *stack, size_t capacity);
-int DestructStack(stack_t *stack);
-int Pop(stack_t *stack);
-int Push(stack_t *stack, int elem);
+stack_t *StackCtor(stack_t *stack, size_t capacity);
+int StackDtor(stack_t *stack);
+int StackPop(stack_t *stack);
+int StackPush(stack_t *stack, int elem);
 const char *ErrorCodePhrase(int error_code);
 int CheckError(stack_t *stack);
 
-int VerifyStack(stack_t *stack);
+int StackVerify(stack_t *stack);
 
 #define case_of_switch(error_code) \
         case error_code:           \
@@ -44,7 +47,8 @@ enum ErrorCode{
     STACK_IS_NULLPTR = 0x1000,
     STACK_WITH_ZERO_ELEMS,
     STACK_IS_ALREADY_EMPTY,
-    STACK_IS_OVERFLOWED,
     CANT_ALLOCATE_MEMORY,
-    STACK_TOP_IS_NULLPTR,
+    STACK_DATA_IS_NULLPTR,
+    STACK_DATA_IS_RUINED,
+    STACK_IS_DESTRUCTED,
 };
