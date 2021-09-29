@@ -7,9 +7,12 @@ int main(){
     size_t initial_capacity = 1;
     
     
+    // StackDump(&stack);
+
     StackCtor(&stack, initial_capacity);
     CheckError(&stack);
 
+    StackDump(&stack);
     // check how not to initialize stack again
 
     StackPush(&stack, {15});

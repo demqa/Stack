@@ -6,6 +6,7 @@
 
 enum ErrorCode{
     STACK_IS_OK = 0,
+    DUMP_COMMITED = 0,
     STACK_IS_EMPTY = 0x11,
     STACK_IS_NULLPTR = 0x1000,
     STACK_WITH_ZERO_ELEMS,
@@ -23,14 +24,19 @@ const int STRING_MAX_SIZE = 100;
 
 struct StackInfo{
     int line;
-    char file[STRING_MAX_SIZE];
-    char func[STRING_MAX_SIZE];
-    char name[STRING_MAX_SIZE];
+    const char *file;
+    const char *func;
+    const char *name;
 };
 
 struct Elem_t{
     int num;
 };
+
+const Elem_t POISONED_ELEM = {
+    666,
+};
+
 
 struct stack_t{
     Elem_t *data;
@@ -48,7 +54,7 @@ struct debug{
 };
 
 #define ASSERT_OK(stack){             \
-    if (!StackVerify(stack)){          \
+    if (StackVerify(stack)){           \
         StackDump(stack);               \
         assert(!"ok" && "Bad stack");    \
     }                                     \
@@ -66,15 +72,17 @@ ErrorCode StackVerify(stack_t *stack);
 
 const char *ErrorCodePhrase(int error_code);
 ErrorCode CheckError(stack_t *stack);
+ErrorCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]);
 
 #define case_of_switch(error_code) \
         case error_code:           \
             return #error_code;    
 
-#define STACK_ERROR(error_code) \
-        stack->error = error_code; \
-        return STACK_IS_OK;
-
+#define STACK_ERROR(error_code){   \
+    stack->error = error_code;      \
+    return stack->error;             \
+}
+        
 
 
 #ifdef DEBUG_MODE
@@ -89,7 +97,9 @@ ErrorCode CheckError(stack_t *stack);
 
 
 
+#define StackDump(stack){           \
+    ErrorCode stack_status = StackVerify(stack);                                    \
+    StackDump_(stack, __LINE__, __FILE__, __PRETTY_FUNCTION__);                   \
+}
 
-
-
-
+#define PRINT_LINE printf("I'm at %s at line %d\n", __PRETTY_FUNCTION__, __LINE__);

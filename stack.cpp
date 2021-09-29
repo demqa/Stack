@@ -10,8 +10,18 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
         return nullptr;
     }
 
-    //  check on empty or destructed stack
-    //  else exit
+    ErrorCode stack_status = StackVerify(stack);
+    if (!(stack_status == STACK_IS_EMPTY || stack_status == STACK_IS_DESTRUCTED)){
+        return nullptr;
+    }
+
+
+    // printf("line = %d, file = %s, func = %s, name = %s\n", line_created, file, func, stack_name);
+
+    stack->info.file = file;
+    stack->info.func = func;
+    stack->info.line = line_created;
+    stack->info.name = stack_name;
 
     if (capacity == 0){
         stack->capacity = 0;
@@ -38,11 +48,11 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
 
 ErrorCode StackPush(stack_t *stack, Elem_t value){
     if (stack == nullptr){
-        // DUMP
+        StackDump(stack);
         return POISON;
     }
 
-    StackVerify(stack);
+    ASSERT_OK(stack);
     // VERIFIED THAT STACK IS NORMAL
 
     if (stack->data == nullptr && stack->capacity == 0){
@@ -58,7 +68,7 @@ ErrorCode StackPush(stack_t *stack, Elem_t value){
 
         // ResizeStack(); // hysteresis
 
-        Elem_t *try_realloc = (Elem_t *) realloc(stack->data, sizeof(int) * (ADDITIONAL_SIZE + stack->capacity));
+        Elem_t *try_realloc = (Elem_t *) realloc(stack->data, sizeof(Elem_t) * (ADDITIONAL_SIZE + stack->capacity));
         if (try_realloc == nullptr){
             STACK_ERROR(CANT_ALLOCATE_MEMORY);
         }
@@ -68,7 +78,7 @@ ErrorCode StackPush(stack_t *stack, Elem_t value){
 
     stack->data[stack->size++] = value;
 
-    StackVerify(stack);
+    ASSERT_OK(stack);
 
     return STACK_IS_OK;
 }
@@ -76,19 +86,20 @@ ErrorCode StackPush(stack_t *stack, Elem_t value){
 Elem_t StackPop(stack_t *stack){
     if (stack == nullptr){
         // DUMP
-        return {POISON};
+        // DUMP
+        return POISONED_ELEM;
     }
-    StackVerify(stack);
+    ASSERT_OK(stack);
 
     if (stack->size == 0){
-        // STACK_ERROR(STACK_IS_ALREADY_EMPTY)
+        stack->error = STACK_IS_ALREADY_EMPTY;
         return {};
     }
     
-    Elem_t data_elem = stack->data[stack->size--];
-    stack->data[stack->size + 1] = {};
+    Elem_t data_elem = stack->data[--stack->size];
+    stack->data[stack->size + 1] = POISONED_ELEM;
 
-    StackVerify(stack);
+    ASSERT_OK(stack);
 
     return data_elem;
 }
@@ -134,10 +145,13 @@ ErrorCode StackDtor(stack_t *stack){
 }
 
 
-
 ErrorCode StackVerify(stack_t *stack){
     if (stack == nullptr){
         return STACK_IS_NULLPTR;
+    }
+
+    if (stack->error != STACK_IS_OK){
+        return stack->error;
     }
 
     if ((stack->data == (Elem_t *)(1000 - 7) && stack->capacity == 0xD1ED && stack->size == 0xF1FA ||
@@ -148,7 +162,7 @@ ErrorCode StackVerify(stack_t *stack){
     // checking on empty
     #ifdef DEBUG_MODE
         if (stack->data == nullptr && stack->size == 0 && stack->capacity == 0 && stack->error == STACK_IS_OK &&
-            stack->info.line == 0 && stack->info.file[0] == '\0' && stack->info.func[0] == '\0' && stack->info.name[0] == '\0'){
+            stack->info.line == 0 && stack->info.file == nullptr && stack->info.func == nullptr && stack->info.name == nullptr){
             return STACK_IS_EMPTY;
         }
     #else
@@ -156,10 +170,6 @@ ErrorCode StackVerify(stack_t *stack){
             return STACK_IS_EMPTY;
         }
     #endif
-
-    if (stack->error){
-        return stack->error;
-    }
     
     if (stack->size > stack->capacity || 
         stack->data == nullptr && stack->capacity != 0 && stack->size != 0 || 
@@ -207,3 +217,25 @@ const char *ErrorCodePhrase(int error_code){
         default: return "UNDEFINED_ERROR";
     }
 }
+
+ErrorCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]/*, ErrorCode stack_status, char *error_msg*/){
+    ErrorCode stack_status = StackVerify(stack);
+
+    if (stack == nullptr){
+        printf("stack<Elem_t>[%p]\n", nullptr);
+        return DUMP_COMMITED;
+    }
+
+    printf("stack<Elem_t>[%p]", stack);
+    if (stack_status != STACK_IS_OK){
+        printf(" ERROR %x %s", stack_status, ErrorCodePhrase(stack_status));
+    }else{
+        printf(" ok, called from %s at %s \b(%d) \"%s\" at %s at %s \b(%d)\n", func, file, line, stack->info.name, stack->info.func, stack->info.file, stack->info.line);
+
+    }
+
+
+    return DUMP_COMMITED;
+}
+
+
