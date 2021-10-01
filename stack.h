@@ -4,12 +4,11 @@
 #include <stdlib.h>
 #include <assert.h>
 
-enum ErrorCode{
+enum StatusCode{
     STACK_IS_OK = 0,
-    DUMP_COMMITED = 0,
+    DUMP_COMMITED = 0x44,
     STACK_IS_EMPTY = 0x11,
     STACK_IS_NULLPTR = 0x1000,
-    STACK_WITH_ZERO_ELEMS,
     STACK_IS_ALREADY_EMPTY,
     CANT_ALLOCATE_MEMORY,
     STACK_DATA_IS_NULLPTR,
@@ -22,36 +21,35 @@ enum ErrorCode{
 
 const int STRING_MAX_SIZE = 100;
 
-struct StackInfo{
-    int line;
-    const char *file;
-    const char *func;
-    const char *name;
-};
-
 struct Elem_t{
     int num;
 };
 
+// i can do POISONED_ELEM WITH MACRO
 const Elem_t POISONED_ELEM = {
     666,
 };
 
+#ifdef DEBUG_MODE
+    struct StackInfo{
+        int line;
+        const char *file;
+        const char *func;
+        const char *name;
+    };
+#endif
 
 struct stack_t{
     Elem_t *data;
     size_t size;
     size_t capacity;
-    ErrorCode error;
+    StatusCode status;
 
     #ifdef DEBUG_MODE
-    StackInfo info;
+        StackInfo info;
     #endif
 };
 
-struct debug{
-
-};
 
 #define ASSERT_OK(stack){             \
     if (StackVerify(stack)){           \
@@ -63,16 +61,16 @@ struct debug{
 const int ADDITIONAL_SIZE = 1;
 
 stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE], const char stack_name[STRING_MAX_SIZE]);
-ErrorCode StackDtor(stack_t *stack);
+StatusCode StackDtor(stack_t *stack);
 Elem_t StackPop(stack_t *stack);
-ErrorCode StackPush(stack_t *stack, Elem_t value);
+StatusCode StackPush(stack_t *stack, Elem_t value);
 
-ErrorCode StackIsDestructed(stack_t *stack);
-ErrorCode StackVerify(stack_t *stack);
+StatusCode StackIsDestructed(stack_t *stack);
+StatusCode StackVerify(stack_t *stack);
 
-const char *ErrorCodePhrase(int error_code);
-ErrorCode CheckError(stack_t *stack);
-ErrorCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]);
+const char *StackStatusPhrase(int error_code);
+StatusCode CheckError(stack_t *stack);
+StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]);
 
 #define case_of_switch(error_code) \
         case error_code:           \
@@ -86,19 +84,17 @@ ErrorCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE],
 
 
 #ifdef DEBUG_MODE
-#define StackCtor(stack, capacity){                                               \
-    StackCtor_(stack, capacity, __LINE__, __FILE__, __PRETTY_FUNCTION__, #stack);  \
-}
+    #define StackCtor(stack, capacity){                                               \
+        StackCtor_(stack, capacity, __LINE__, __FILE__, __PRETTY_FUNCTION__, #stack);  \
+    }
 #else
-#define StackCtor(stack, capacity){                                               \
-    StackCtor_(stack, capacity, 0, "", "", "");                                    \
-}
+    #define StackCtor(stack, capacity){                                               \
+        StackCtor_(stack, capacity, 0, "", "", "");                                    \
+    }
 #endif
 
 
-
-#define StackDump(stack){           \
-    ErrorCode stack_status = StackVerify(stack);                                    \
+#define StackDump(stack){                                                        \
     StackDump_(stack, __LINE__, __FILE__, __PRETTY_FUNCTION__);                   \
 }
 
