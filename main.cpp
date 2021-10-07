@@ -4,7 +4,7 @@ int main(){
 
     stack_t stack = {};
 
-    size_t initial_capacity = 1;
+    size_t initial_capacity = 0;
     
     
     StackDump(&stack);
@@ -21,8 +21,12 @@ int main(){
 
     StackDump(&stack);
 
-    StackPush(&stack, {666});
-      
+    StackPush(&stack, {1488});
+    StackPush(&stack, {1488});
+    StackPush(&stack, {1488});
+    StackPush(&stack, {1488});
+    StackPush(&stack, {1488});
+
     // PRINT_LINE;
 
     StackDump(&stack);
@@ -71,7 +75,9 @@ int main(){
     // PRINT_LINE;
     StackDump(&stack);
 
+    // PRINT_LINE;
     StackDtor(&stack);
+    // PRINT_LINE;
 
     StackDump(&stack);
     // PRINT_LINE;
@@ -79,7 +85,7 @@ int main(){
       
     // PRINT_LINE;
 
-    // DONT DESTRUCT STACK AGAIN PLEASE
+    // DONT DESTRUCT STACK AGAIN // PLEASE
     // DestructStack(&stack);
     // CheckError(&stack);;
     

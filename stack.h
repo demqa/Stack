@@ -4,12 +4,14 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#define DEBUG_MODE 01
+
 enum StatusCode{
     STACK_IS_OK         = 0,
     DUMP_COMMITED       = 1 << 31,
     STACK_IS_DESTRUCTED = 1 << 30,
     STACK_IS_EMPTY      = 1 << 29,
-    RESULT_IS_UNKNOWN   = -1,
+    RESULT_IS_UNKNOWN   = 0,
 
     STACK_IS_NULLPTR                = 1 << 0,
     STACK_IS_ALREADY_EMPTY          = 1 << 1,
@@ -20,15 +22,23 @@ enum StatusCode{
     STACK_CAPACITY_LESS_THAN_ZERO   = 1 << 6,
     STACK_SIZE_LESS_THAN_ZERO       = 1 << 7,
 
+    #if DEBUG_MODE & 02
+        STACK_HASH_RUINED           = 1 << 27,
+    #endif
+
+    #if DEBUG_MODE & 04
+        STACK_CANARIES_RUINED       = 1 << 28,
+    #endif
     
 };
 
-#define DEBUG_MODE 01
 
-// debug mode & 01 
-// debug mode & 02
-// debug mode & 04
-// debug mode & 010
+
+// debug mode & 01   STACK_INFO && ASSERT_OK
+// debug mode & 02   CANARIES
+// debug mode & 04   HASH
+// debug mode & 010 
+
 
 const int STRING_MAX_SIZE = 100;
 
@@ -51,19 +61,31 @@ const Elem_t POISONED_ELEM = {
 #endif
 
 struct stack_t{
+    #if DEBUG_MODE & 02
+        u_int64_t HIPPO;
+    #endif
+
     Elem_t *data;
     size_t size;
     size_t capacity;
     int status;
 
+    #if DEBUG_MODE & 04
+        u_int64_t hash;
+    #endif
+
     #if DEBUG_MODE & 01
         StackInfo info;
+    #endif
+
+    #if DEBUG_MODE & 02
+        u_int64_t POTAMUS;
     #endif
 };
 
 #if DEBUG_MODE & 01
     #define ASSERT_OK(stack){                    \
-        if (StackVerify(stack) != STACK_IS_OK){  \
+        if (StackVerify(stack) != STACK_IS_OK){   \
             StackDump(stack);                      \
             assert(!"ok" && "Bad stack");           \
         }                                            \
@@ -71,6 +93,8 @@ struct stack_t{
 #endif
 
 const int ADDITIONAL_SIZE = 1;
+
+const int START_SIZE      = 8;
 
 stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE], const char stack_name[STRING_MAX_SIZE]);
 StatusCode StackDtor(stack_t *stack);

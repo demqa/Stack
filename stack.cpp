@@ -28,11 +28,21 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
         return stack;
     }
 
-    stack->data = (Elem_t *) calloc(capacity, sizeof(Elem_t));
-    if (stack->data == nullptr){
-        stack->status = CANT_ALLOCATE_MEMORY;
-        return stack;
-    }
+    #if DEBUG_MODE & 02
+        stack->data = (Elem_t *) calloc(capacity * sizeof(Elem_t) + 2 * sizeof(u_int64_t), sizeof(char));
+        if (stack->data == nullptr){
+            stack->status = CANT_ALLOCATE_MEMORY;
+            return stack;
+        }
+        stack->data += sizeof(u_int64_t);
+    #else
+        stack->data = (Elem_t *) calloc(capacity, sizeof(Elem_t));
+        if (stack->data == nullptr){
+            stack->status = CANT_ALLOCATE_MEMORY;
+            return stack;
+        }
+    #endif
+    
 
     stack->size     = 0;
     stack->capacity = capacity;
@@ -51,14 +61,23 @@ StatusCode StackPush(stack_t *stack, Elem_t value){
     ASSERT_OK(stack);
 
     if (stack->data == nullptr && stack->capacity == 0){
-        stack->data = (Elem_t *) calloc(ADDITIONAL_SIZE, sizeof(int));
+        #if DEBUG_MODE & 02
+            stack->data = (Elem_t *) calloc(START_SIZE * sizeof(Elem_t) + 2 * sizeof(u_int64_t), sizeof(char));
+        #else
+            stack->data = (Elem_t *) calloc(START_SIZE, sizeof(Elem_t));
+        #endif
+
         if (stack->data == nullptr){
             stack->status = CANT_ALLOCATE_MEMORY;
             StackDump(stack);
             return (StatusCode) stack->status;
         }
-    
-        stack->capacity += ADDITIONAL_SIZE;
+        
+        #if DEBUG_MODE & 02
+            stack->data += sizeof(u_int64_t);
+        #endif
+
+        stack->capacity += START_SIZE;
     }
     
     if (stack->size + 1 == stack->capacity){
@@ -85,8 +104,7 @@ StatusCode StackPush(stack_t *stack, Elem_t value){
 
 Elem_t StackPop(stack_t *stack){
     if (stack == nullptr){
-        // DUMP
-        // DUMP
+        StackDump(stack);
         return POISONED_ELEM;
     }
     ASSERT_OK(stack);
@@ -97,7 +115,7 @@ Elem_t StackPop(stack_t *stack){
         return POISONED_ELEM;
     }
     
-    Elem_t data_elem = stack->data[--stack->size];
+    Elem_t data_elem = stack->data[stack->size--];
     stack->data[stack->size + 1] = POISONED_ELEM;
 
     ASSERT_OK(stack);
@@ -119,25 +137,44 @@ StatusCode StackDtor(stack_t *stack){
 
     if (stack->data == nullptr){
         if (stack->capacity == 0){
-            stack->capacity = 0xBEBA; 
+            stack->capacity = 0xBEBA;
             stack->size     = 0xDEDA;
             STACK_STATUS(STACK_IS_DESTRUCTED);
         }
         StackDump(stack);
         STACK_STATUS(STACK_DATA_IS_NULLPTR)
     }
+    PRINT_LINE;
 
-
-    while (stack->size > 0){
-        stack->data[stack->size] = POISONED_ELEM;
+    while ((int)stack->size >= 0){
+        printf("stack->size = %d\n", stack->size);
+        stack->data[stack->size--] = POISONED_ELEM;
     }
+    stack->size = 0;
+    PRINT_LINE;
 
-    free(stack->data);
+    #if DEBUG_MODE & 02
+        free(stack->data - sizeof(u_int64_t));
+    #else
+        free(stack->data);
+    #endif
+    PRINT_LINE;
 
     stack->data = (Elem_t *)(1000 - 7);
 
     stack->capacity = 0xD1ED;
     stack->size     = 0xF1FA;
+
+    PRINT_LINE;
+
+    #if DEBUG_MODE & 01
+        stack->info.file = (char *)(300);
+        stack->info.func = (char *)(228 - 127);
+        stack->info.name = (char *)(999 - 123);
+        stack->info.line = 0xEBAAL;
+    #endif
+
+    PRINT_LINE;
 
     STACK_STATUS(STACK_IS_DESTRUCTED);
 }
@@ -181,8 +218,10 @@ StatusCode StackIsEmpty(stack_t *stack){
 
 StatusCode StackIsDestructed(stack_t *stack){
     #if DEBUG_MODE & 01
-        if ((stack->data == (Elem_t *)(1000 - 7) && stack->capacity == 0xD1ED && stack->size == 0xF1FA ||
-             stack->data == nullptr              && stack->capacity == 0xBEBA && stack->size == 0xDEDA)){
+        if (((stack->data == (Elem_t *)(1000 - 7) && stack->capacity == 0xD1ED && stack->size == 0xF1FA) ||
+             (stack->data == nullptr              && stack->capacity == 0xBEBA && stack->size == 0xDEDA)) &&
+              stack->info.file == (char *)(300)       && stack->info.func == (char *)(228 - 127) &&
+              stack->info.name == (char *)(999 - 123) && stack->info.line == 0xEBAAL){
             return STACK_IS_DESTRUCTED;
         }
     #else
@@ -249,6 +288,13 @@ void PrintElem_t(Elem_t *value){
 }
 
 
+int NumberOfCharacters(int edge){
+    int num = 1;
+    for (int p = 1; p * 10 <= edge; p *= 10, ++num);
+    return num;
+}
+
+
 StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]/*, StatusCode stack_status, char *error_msg*/){
     int stack_status = StackVerify(stack);
 
@@ -256,14 +302,21 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
         printf("stack<Elem_t>[%p]\n", nullptr);
         return DUMP_COMMITED;
     }
+    // PRINT_LINE;
 
     printf("stack<Elem_t>[%p] ", stack);
-    
-    if (StackIsEmpty(stack) == STACK_IS_EMPTY){
+
+    stack_status |= StackIsEmpty(stack);
+    stack_status |= StackIsDestructed(stack);
+
+    // PRINT_LINE;
+
+    if (stack_status & STACK_IS_EMPTY){
         printf("ok, empty(not constructed), ");
     }
     else
-    if (StackIsDestructed(stack) == STACK_IS_DESTRUCTED){
+    if (stack_status & STACK_IS_DESTRUCTED){
+        PRINT_LINE;
         printf("ok, destructed,");
     }
     else
@@ -271,6 +324,7 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
         printf("ok,");
     }
     else{
+        PRINT_LINE;
         printf("ERROR: ");
         PRINT_ERROR(STACK_IS_ALREADY_EMPTY);
         PRINT_ERROR(CANT_ALLOCATE_MEMORY);
@@ -284,21 +338,40 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
         // PRINT_ERROR();
     }
 
+    // PRINT_LINE;
+
     printf(" called from %s at %s \b(%d)", func, file, line);
+
+    // PRINT_LINE;
+
     #if DEBUG_MODE & 01
-        printf(", \"%s\" created at %s at %s \b(%d)", stack->info.name, stack->info.func, stack->info.file, stack->info.line);
+        if (stack_status & (STACK_IS_EMPTY | STACK_IS_DESTRUCTED) == 0)
+            printf(", \"%s\" created at %s at %s \b(%d)", stack->info.name, stack->info.func, stack->info.file, stack->info.line);
     #endif
     printf("\n");
 
+    printf("    {\n");
+
+    // PRINT_LINE;
+
+    printf("    size = %d\n",     (int)stack->size);
+    printf("    capacity = %d\n", (int)stack->capacity);
+
+    printf("    data[%p]\n", stack->data);
+
     if (stack_status == STACK_IS_OK){
-        printf("    {\n");
+        printf("        {\n");
         for (int i = 0; i < stack->capacity; i++){
-            printf("        data[%d] = ", i);
+            printf("         data[%*d] = ", NumberOfCharacters((int)stack->capacity - 1), i);
             PrintElem_t(stack->data + i);
         }
-        printf("    }\n");
+        printf("        }\n");
     }
-    printf("\n");
+
+
+    printf("    }\n");
+
+    printf("........Dumped...\n\n");
     
     // commented because of empty stack will not be empty anymore...
     // stack->status += DUMP_COMMITED;
