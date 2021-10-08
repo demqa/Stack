@@ -4,14 +4,19 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#define DEBUG_MODE 01
+#define STACK_INFO   01
+#define CANARY_GUARD 02
+#define HASH_GUARD   04
+
+#define DEBUG_MODE   01
 
 enum StatusCode{
-    STACK_IS_OK         = 0,
-    DUMP_COMMITED       = 1 << 31,
-    STACK_IS_DESTRUCTED = 1 << 30,
-    STACK_IS_EMPTY      = 1 << 29,
-    RESULT_IS_UNKNOWN   = 0,
+    STACK_IS_OK                    = 0,
+    RESULT_IS_UNKNOWN              = 0,
+    DUMP_COMMITED                  = 1 << 31,
+    STACK_IS_DESTRUCTED            = 1 << 30,
+    STACK_IS_EMPTY                 = 1 << 29,
+    
 
     STACK_IS_NULLPTR                = 1 << 0,
     STACK_IS_ALREADY_EMPTY          = 1 << 1,
@@ -22,22 +27,33 @@ enum StatusCode{
     STACK_CAPACITY_LESS_THAN_ZERO   = 1 << 6,
     STACK_SIZE_LESS_THAN_ZERO       = 1 << 7,
 
-    #if DEBUG_MODE & 02
-        STACK_HASH_RUINED           = 1 << 27,
+    STACK_RESIZE_WRONG_PARAM        = 1 << 25,
+    
+    #if DEBUG_MODE & 01
+        STACK_INFO_RUINED           = 1 << 26,
     #endif
 
-    #if DEBUG_MODE & 04
-        STACK_CANARIES_RUINED       = 1 << 28,
+    #if DEBUG_MODE & CANARY_GUARD
+        STACK_CANARIES_RUINED       = 1 << 27,
+    #endif
+
+    #if DEBUG_MODE & HASH_GUARD
+        STACK_HASH_RUINED           = 1 << 28,
     #endif
     
 };
 
+enum ResizeMode{
+    INCREASE_CAPACITY = 0xD0DE,
+    DECREASE_CAPACITY = 0xF0E5,
+};
 
 
-// debug mode & 01   STACK_INFO && ASSERT_OK
+
+// debug mode & 01   STACK_INFO
 // debug mode & 02   CANARIES
 // debug mode & 04   HASH
-// debug mode & 010 
+// debug mode & 010  
 
 
 const int STRING_MAX_SIZE = 100;
@@ -61,7 +77,7 @@ const Elem_t POISONED_ELEM = {
 #endif
 
 struct stack_t{
-    #if DEBUG_MODE & 02
+    #if DEBUG_MODE & CANARY_GUARD
         u_int64_t HIPPO;
     #endif
 
@@ -70,7 +86,7 @@ struct stack_t{
     size_t capacity;
     int status;
 
-    #if DEBUG_MODE & 04
+    #if DEBUG_MODE & HASH_GUARD
         u_int64_t hash;
     #endif
 
@@ -78,12 +94,12 @@ struct stack_t{
         StackInfo info;
     #endif
 
-    #if DEBUG_MODE & 02
+    #if DEBUG_MODE & CANARY_GUARD
         u_int64_t POTAMUS;
     #endif
 };
 
-#if DEBUG_MODE & 01
+#ifdef DEBUG_MODE
     #define ASSERT_OK(stack){                    \
         if (StackVerify(stack) != STACK_IS_OK){   \
             StackDump(stack);                      \
@@ -109,12 +125,12 @@ const char *StackStatusPhrase(int error_code);
 StatusCode CheckError(stack_t *stack);
 StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]);
 
-#define case_of_switch(error_code) \
-        case error_code:           \
-            return #error_code;    
+#define COS(error_code) \
+        case error_code:            \
+            return #error_code;      \
 
 #define STACK_STATUS(status_code){   \
-    stack->status = status_code;      \
+    stack->status |= status_code;     \
     return (StatusCode) stack->status;             \
 }
 
