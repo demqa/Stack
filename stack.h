@@ -8,32 +8,37 @@
 #define HIPPO_GUARD  02
 #define HASH_GUARD   04
 
-#define DEBUG_MODE   01
+#define DEBUG_MODE   03
 
 enum StatusCode{
-    STACK_IS_OK                    = 0,
-    RESULT_IS_UNKNOWN              = 0,
-    DUMP_COMMITED                  = 1 << 31,
-    STACK_IS_DESTRUCTED            = 1 << 30,
-    STACK_IS_EMPTY                 = 1 << 29,
+    STACK_IS_OK                     = 0,
+    RESULT_IS_UNKNOWN               = 0,
+    DUMP_COMMITED                   = 1 << 31,
+    STACK_IS_DESTRUCTED             = 1 << 30,
+    STACK_IS_EMPTY                  = 1 << 29,
     
     STACK_IS_NULLPTR                = 1 << 0,
     STACK_IS_ALREADY_EMPTY          = 1 << 1,
     CANT_ALLOCATE_MEMORY            = 1 << 2,
+
     STACK_DATA_IS_RUINED            = 1 << 3,
     STACK_DATA_IS_NULLPTR           = 1 << 4,
     STACK_SIZE_BIGGER_THAN_CAPACITY = 1 << 5,
     STACK_CAPACITY_LESS_THAN_ZERO   = 1 << 6,
     STACK_SIZE_LESS_THAN_ZERO       = 1 << 7,
 
-    STACK_RESIZE_WRONG_PARAM        = 1 << 25,
+    STACK_RESIZE_WRONG_PARAM        = 1 << 22,
     
     #if DEBUG_MODE & STACK_INFO
-        STACK_INFO_RUINED           = 1 << 26,
+        STACK_INFO_RUINED           = 1 << 23,
     #endif
 
     #if DEBUG_MODE & HIPPO_GUARD
-        STACK_HIPPOS_RUINED       = 1 << 27,
+        STACK_LEFT_HIPPO_RUINED     = 1 << 24,
+        STACK_RIGHT_POTAM_RUINED    = 1 << 25,
+
+        DATA_LEFT_HIPPO_RUINED      = 1 << 26,
+        DATA_RIGHT_POTAM_RUINED     = 1 << 27,
     #endif
 
     #if DEBUG_MODE & HASH_GUARD
@@ -47,7 +52,8 @@ enum ResizeMode{
     DECREASE_CAPACITY = 0xF0E5,
 };
 
-
+const u_int64_t HIPPO = 0xAC1DC1DA;
+const u_int64_t POTAM = 0xD1CAAC1D;
 
 const int STRING_MAX_SIZE = 100;
 
@@ -88,7 +94,7 @@ struct stack_t{
     #endif
 
     #if DEBUG_MODE & HIPPO_GUARD
-        u_int64_t POTAMUS;
+        u_int64_t POTAM;
     #endif
 };
 
@@ -122,7 +128,7 @@ const char *StackStatusPhrase(int error_code);
 StatusCode CheckError(stack_t *stack);
 StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]);
 
-#define COS(error_code) \
+#define CASE_OF_SWITCH(error_code) \
         case error_code:            \
             return #error_code;      \
 
@@ -152,3 +158,7 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
     if (stack_status & error)  \
         printf("%s ", #error);  \
 }
+
+#define PRINT_PTR(ptr) printf("pointer %s at %p at line %d\n", #ptr, ptr, __LINE__);
+
+#define ADDRESS(ptr, type) (u_int64_t)(ptr - (type *)nullptr)

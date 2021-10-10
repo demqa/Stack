@@ -35,12 +35,24 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
     if (capacity & 07 != 0) capacity = (capacity / 8 + 1) * 8;
 
     #if DEBUG_MODE & HIPPO_GUARD
-        stack->data = (Elem_t *) calloc(capacity * sizeof(Elem_t) + 2 * sizeof(u_int64_t), sizeof(char));
-        if (stack->data == nullptr){
+        stack->HIPPO = HIPPO ^ ADDRESS(stack, stack_t);
+        stack->POTAM = POTAM ^ ADDRESS(stack, stack_t);
+    
+        void *ptr = nullptr;
+        ptr = (void *) calloc(capacity * sizeof(Elem_t) + 2 * sizeof(u_int64_t), 1);
+
+        if (ptr == nullptr){
             stack->status = CANT_ALLOCATE_MEMORY;
             return stack;
         }
-        stack->data += sizeof(u_int64_t);
+        
+        *((u_int64_t *)ptr) = stack->HIPPO;
+        ptr = ptr + sizeof(u_int64_t) + sizeof(Elem_t) * capacity;
+
+        *((u_int64_t *)ptr) = stack->POTAM;
+        ptr = ptr - sizeof(Elem_t) * capacity;
+        
+        stack->data = (Elem_t *) ptr;
     #else
         stack->data = (Elem_t *) calloc(capacity, sizeof(Elem_t));
         if (stack->data == nullptr){
@@ -66,8 +78,6 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
 Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
     ASSERT_OK(stack);
 
-    // StackDump(stack);
-    
     size_t new_capacity = 0;
 
     if (mode == INCREASE_CAPACITY){
@@ -85,7 +95,7 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
     if (new_capacity < 8) new_capacity = 8;
 
     #if DEBUG_MODE & HIPPO_GUARD
-        Elem_t *try_realloc = (Elem_t *) realloc(stack->data - sizeof(u_int64_t), sizeof(Elem_t) * new_capacity + 2 * sizeof(u_int64_t));
+        void *try_realloc = (void *) realloc((void *)stack->data - sizeof(u_int64_t), sizeof(Elem_t) * new_capacity + 2 * sizeof(u_int64_t));
     #else
         Elem_t *try_realloc = (Elem_t *) realloc(stack->data, new_capacity * sizeof(Elem_t));
     #endif
@@ -96,7 +106,11 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
         return nullptr;
     }
 
-    stack->data = try_realloc;
+    #if DEBUG_MODE & HIPPO_GUARD
+        try_realloc += sizeof(u_int64_t);
+    #endif
+
+    stack->data = (Elem_t *) try_realloc;
 
     if (mode == INCREASE_CAPACITY){
         for (int i = (int)stack->capacity; i < (int)new_capacity; ++i){
@@ -107,8 +121,6 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
     stack->capacity = new_capacity;
 
     ASSERT_OK(stack);
-
-    // StackDump(stack);
 
     return stack->data;
 }
@@ -130,14 +142,11 @@ StatusCode StackPush(stack_t *stack, Elem_t value){
             StackDump(stack);
             return (StatusCode) stack->status;
         }
-
     }
 
     stack->data[stack->size++] = value;
 
     ASSERT_OK(stack);
-
-    // StackDump(stack);
 
     return STACK_IS_OK;
 }
@@ -170,8 +179,6 @@ Elem_t StackPop(stack_t *stack){
 
     ASSERT_OK(stack);
 
-    // StackDump(stack);
-
     return data_elem;
 }
 
@@ -193,7 +200,7 @@ StatusCode StackDtor(stack_t *stack){
             STACK_STATUS(STACK_IS_DESTRUCTED);
         }
         StackDump(stack);
-        STACK_STATUS(STACK_DATA_IS_NULLPTR)
+        STACK_STATUS(STACK_DATA_IS_NULLPTR);
     }
 
     while ((int)stack->size >= 0){
@@ -202,7 +209,7 @@ StatusCode StackDtor(stack_t *stack){
     stack->size = 0;
 
     #if DEBUG_MODE & HIPPO_GUARD
-        free(stack->data - sizeof(u_int64_t));
+        free((void *)stack->data - sizeof(u_int64_t));
     #else
         free(stack->data);
     #endif
@@ -211,6 +218,11 @@ StatusCode StackDtor(stack_t *stack){
 
     stack->capacity = 0xD1ED;
     stack->size     = 0xF1FA;
+
+    #if DEBUG_MODE & HIPPO_GUARD
+        stack->HIPPO = 0xDEADF1DC;
+        stack->POTAM = 0xAC4071CC;
+    #endif
 
     #if DEBUG_MODE & STACK_INFO
         stack->info.file = (char *)(300);
@@ -233,14 +245,10 @@ int StackVerify(stack_t *stack){
     int status = STACK_IS_OK;
 
     #if DEBUG_MODE & STACK_INFO
-        if (stack->info.line == 0 || stack->info.file == nullptr || 
+        if (stack->info.line == 0       || stack->info.file == nullptr || 
             stack->info.func == nullptr || stack->info.name == nullptr){
             status |= STACK_DATA_IS_RUINED | STACK_INFO_RUINED;
         }
-    #endif
-
-    #if DEBUG_MODE & HIPPO_GUARD
-        // TODO
     #endif
     
     if (stack->size > stack->capacity)
@@ -252,9 +260,33 @@ int StackVerify(stack_t *stack){
     if (stack->size < 0)
         status |= STACK_DATA_IS_RUINED | STACK_SIZE_LESS_THAN_ZERO;
 
-    stack->status = status; 
+    #if DEBUG_MODE & HIPPO_GUARD
+        if (stack->HIPPO != (u_int64_t) (HIPPO ^ ADDRESS(stack, stack_t)))
+            status |= STACK_DATA_IS_RUINED | STACK_LEFT_HIPPO_RUINED;
+        if (stack->POTAM != (u_int64_t) (POTAM ^ ADDRESS(stack, stack_t)))
+            status |= STACK_DATA_IS_RUINED | STACK_RIGHT_POTAM_RUINED;
+            
 
-    return stack->status;
+        if (stack->data != nullptr && status & STACK_DATA_IS_RUINED == 0 && status & STACK_IS_DESTRUCTED == 0){
+            void *ptr = (void *) stack->data - sizeof(u_int64_t);
+            
+            if (*((u_int64_t *)ptr) == HIPPO ^ ADDRESS(stack, stack_t))
+                status |= STACK_DATA_IS_RUINED | DATA_LEFT_HIPPO_RUINED;
+
+            ptr = ptr + sizeof(u_int64_t) + sizeof(Elem_t) * stack->capacity;
+
+            if (*((u_int64_t *)ptr) == POTAM ^ ADDRESS(stack, stack_t))
+                status |= STACK_DATA_IS_RUINED | DATA_RIGHT_POTAM_RUINED;
+
+            ptr = ptr - sizeof(Elem_t) * stack->capacity;
+        
+            stack->data = (Elem_t *) ptr;
+        }
+    #endif
+
+    stack->status |= status; 
+
+    return status;
 }
 
 StatusCode StackIsEmpty(stack_t *stack){
@@ -271,7 +303,7 @@ StatusCode StackIsEmpty(stack_t *stack){
     #endif
 
     #if DEBUG_MODE & HIPPO_GUARD
-        if (!(stack->HIPPO == 0 && stack->POTAMUS == 0)){
+        if (stack->HIPPO != 0 || stack->POTAM != 0){
             stack_is_empty = 0;
         }
     #endif
@@ -290,19 +322,23 @@ StatusCode StackIsEmpty(stack_t *stack){
 #endif
 
 StatusCode StackIsDestructed(stack_t *stack){
-    #if DEBUG_MODE & STACK_INFO
-        if (((stack->data == (Elem_t *)(1000 - 7) && stack->capacity == 0xD1ED && stack->size == 0xF1FA) ||
-             (stack->data == nullptr              && stack->capacity == 0xBEBA && stack->size == 0xDEDA)) &&
-              stack->info.file == (char *)(300)       && stack->info.func == (char *)(228 - 127) &&
-              stack->info.name == (char *)(999 - 123) && stack->info.line == 0xEBAAL){
-            return STACK_IS_DESTRUCTED;
-        }
-    #else
-        if ((stack->data == (Elem_t *)(1000 - 7) && stack->capacity == 0xD1ED && stack->size == 0xF1FA ||
-             stack->data == nullptr              && stack->capacity == 0xBEBA && stack->size == 0xDEDA)){
-            return STACK_IS_DESTRUCTED;
-        }
-    #endif
+    if (((stack->data == (Elem_t *)(1000 - 7) && stack->capacity == 0xD1ED && stack->size == 0xF1FA) ||
+         (stack->data == nullptr              && stack->capacity == 0xBEBA && stack->size == 0xDEDA))
+                
+        #if DEBUG_MODE & STACK_INFO
+        &&
+          stack->info.file == (char *)(300)       && stack->info.func == (char *)(228 - 127) &&
+          stack->info.name == (char *)(999 - 123) && stack->info.line == 0xEBAAL
+        #endif
+
+        #if DEBUG_MODE & HIPPO_GUARD
+        &&
+          stack->HIPPO == 0xDEADF1DC && stack->POTAM == 0xAC4071CC
+        #endif
+
+        ){
+        return STACK_IS_DESTRUCTED;
+    }
 
     return RESULT_IS_UNKNOWN;
 }
@@ -331,19 +367,19 @@ const char *StackStatusPhrase(int error_code){
     switch (error_code){
         case 0: return "OK";
 
-        COS(STACK_IS_NULLPTR)
+        CASE_OF_SWITCH(STACK_IS_NULLPTR)
 
-        COS(STACK_IS_DESTRUCTED)
-        COS(STACK_IS_EMPTY)
-        COS(DUMP_COMMITED)
+        CASE_OF_SWITCH(STACK_IS_DESTRUCTED)
+        CASE_OF_SWITCH(STACK_IS_EMPTY)
+        CASE_OF_SWITCH(DUMP_COMMITED)
         
-        COS(STACK_IS_ALREADY_EMPTY)
+        CASE_OF_SWITCH(STACK_IS_ALREADY_EMPTY)
 
-        COS(STACK_DATA_IS_NULLPTR)
-        COS(STACK_DATA_IS_RUINED)
+        CASE_OF_SWITCH(STACK_DATA_IS_NULLPTR)
+        CASE_OF_SWITCH(STACK_DATA_IS_RUINED)
         
         
-        COS(CANT_ALLOCATE_MEMORY)
+        CASE_OF_SWITCH(CANT_ALLOCATE_MEMORY)
 
         default: return "UNDEFINED_ERROR";
     }
@@ -377,7 +413,7 @@ u_int64_t Hash(void *ptr, size_t number_of_bytes){
 }
 
 StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]/*, StatusCode stack_status, char *error_msg*/){
-    int stack_status = StackVerify(stack);
+    int stack_status = StackVerify(stack) | stack->status;
 
     if (stack_status == STACK_IS_NULLPTR){
         printf("%s\n", StackStatusPhrase(stack_status));
@@ -416,18 +452,30 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
         printf(", \"%s\" created at %s at %s \b(%d)", stack->info.name, stack->info.func, stack->info.file, stack->info.line);
     #endif
 
-
     if (stack_has_errors){
         printf("\n");
         PRINT_ERROR(STACK_IS_ALREADY_EMPTY);
         PRINT_ERROR(CANT_ALLOCATE_MEMORY);
-        PRINT_ERROR(STACK_INFO_RUINED);
 
         PRINT_ERROR(STACK_DATA_IS_RUINED);
+
         PRINT_ERROR(STACK_DATA_IS_NULLPTR);
         PRINT_ERROR(STACK_SIZE_BIGGER_THAN_CAPACITY);
         PRINT_ERROR(STACK_CAPACITY_LESS_THAN_ZERO);
         PRINT_ERROR(STACK_SIZE_LESS_THAN_ZERO);
+        PRINT_ERROR(STACK_RESIZE_WRONG_PARAM);
+
+        #if DEBUG_MODE & STACK_INFO
+            PRINT_ERROR(STACK_INFO_RUINED)
+        #endif
+
+        #if DEBUG_MODE & HIPPO_GUARD
+            PRINT_ERROR(STACK_LEFT_HIPPO_RUINED)
+            PRINT_ERROR(STACK_RIGHT_POTAM_RUINED)
+
+            PRINT_ERROR(DATA_LEFT_HIPPO_RUINED)
+            PRINT_ERROR(DATA_RIGHT_POTAM_RUINED)
+        #endif
     }
         
     printf("\n");
@@ -451,3 +499,4 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
 
     return DUMP_COMMITED;
 }
+
