@@ -1,5 +1,37 @@
 #include "stack.h"
 
+u_int64_t Hash(void *memory, size_t number_of_bytes){
+    u_int64_t sum = 0;
+
+    for (size_t i = 0; i < number_of_bytes; ++i){
+        sum += (*((char *)memory + i) + 300) * (number_of_bytes * i);
+    }
+
+    return sum;
+}
+
+u_int64_t CountHash(stack_t *stack){
+    if (stack == nullptr){
+        return (u_int64_t)STACK_IS_NULLPTR;
+    }
+
+    u_int64_t this_hash_was_in_stack = stack->hash;
+
+    stack->hash = 0;
+
+    u_int64_t hash = Hash((void *)stack, sizeof(stack));
+
+    if (stack->data != nullptr || StackIsDestructed(stack) != STACK_IS_DESTRUCTED){
+        hash += Hash((void *)stack->data, stack->capacity * sizeof(Elem_t));
+    }
+
+    hash += ADDRESS(stack->data, Elem_t);
+
+    stack->hash = this_hash_was_in_stack;
+    
+    return hash;
+}
+
 stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE], const char stack_name[STRING_MAX_SIZE]){
     if (stack == nullptr){
         return nullptr;
@@ -9,12 +41,15 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
         StackIsDestructed(stack) != STACK_IS_DESTRUCTED
 
         #if DEBUG_MODE & STACK_INFO
-        && StackInfoIsEmpty(stack)
+        &&
+        StackInfoIsEmpty(stack)
         #endif
 
         ){
         return nullptr;
     }
+
+    PRINT_LINE;
 
     #if DEBUG_MODE & STACK_INFO
         stack->info.file = file;
@@ -31,6 +66,8 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
 
         return stack;
     }
+
+    PRINT_LINE;
 
     if (capacity & 07 != 0) capacity = (capacity / 8 + 1) * 8;
 
@@ -61,6 +98,8 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
         }
     #endif
 
+    PRINT_LINE;
+
     for (int i = 0; i < capacity; i++){
         stack->data[i] = POISONED_ELEM;
     }
@@ -70,7 +109,17 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
 
     stack->status   = STACK_IS_OK;
 
+    #if DEBUG_MODE & HASH_GUARD
+        stack->hash = CountHash(stack);
+    #endif
+
+    printf("stack->hash = %x\n", stack->hash);
+
+    PRINT_LINE;
+
     ASSERT_OK(stack);
+
+    PRINT_LINE;
 
     return stack;
 }
@@ -89,6 +138,7 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
     }
     else{
         stack->status |= STACK_RESIZE_WRONG_PARAM;
+        StackDump(stack);
         return nullptr;
     }
 
@@ -97,7 +147,7 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
     #if DEBUG_MODE & HIPPO_GUARD
         void *try_realloc = (void *) realloc((void *)stack->data - sizeof(u_int64_t), sizeof(Elem_t) * new_capacity + 2 * sizeof(u_int64_t));
     #else
-        Elem_t *try_realloc = (Elem_t *) realloc(stack->data, new_capacity * sizeof(Elem_t));
+        void *try_realloc = (void *) realloc(stack->data, new_capacity * sizeof(Elem_t));
     #endif
 
     if (try_realloc == nullptr){
@@ -107,7 +157,7 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
     }
 
     #if DEBUG_MODE & HIPPO_GUARD
-        try_realloc += sizeof(u_int64_t);
+        try_realloc = try_realloc + sizeof(u_int64_t);
     #endif
 
     stack->data = (Elem_t *) try_realloc;
@@ -119,6 +169,10 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
     }
 
     stack->capacity = new_capacity;
+
+    #if DEBUG_MODE & HASH_GUARD
+        stack->hash = CountHash(stack);
+    #endif
 
     ASSERT_OK(stack);
 
@@ -145,6 +199,10 @@ StatusCode StackPush(stack_t *stack, Elem_t value){
     }
 
     stack->data[stack->size++] = value;
+
+    #if DEBUG_MODE & HASH_GUARD
+        stack->hash = CountHash(stack);
+    #endif
 
     ASSERT_OK(stack);
 
@@ -176,6 +234,10 @@ Elem_t StackPop(stack_t *stack){
             return POISONED_ELEM;
         }
     }
+
+    #if DEBUG_MODE & HASH_GUARD
+        stack->hash = CountHash(stack);
+    #endif
 
     ASSERT_OK(stack);
 
@@ -220,8 +282,8 @@ StatusCode StackDtor(stack_t *stack){
     stack->size     = 0xF1FA;
 
     #if DEBUG_MODE & HIPPO_GUARD
-        stack->HIPPO = 0xDEADF1DC;
-        stack->POTAM = 0xAC4071CC;
+        stack->HIPPO = 0xDEADF1DC ^ ADDRESS(stack, stack_t);
+        stack->POTAM = 0xAC47AC47 ^ ADDRESS(stack, stack_t);
     #endif
 
     #if DEBUG_MODE & STACK_INFO
@@ -229,6 +291,10 @@ StatusCode StackDtor(stack_t *stack){
         stack->info.func = (char *)(228 - 127);
         stack->info.name = (char *)(999 - 123);
         stack->info.line = 0xEBAAL;
+    #endif
+
+    #if DEBUG_MODE & HASH_GUARD
+        stack->hash = 0xFA1EBACAUL;
     #endif
 
     STACK_STATUS(STACK_IS_DESTRUCTED);
@@ -270,17 +336,23 @@ int StackVerify(stack_t *stack){
         if (stack->data != nullptr && status & STACK_DATA_IS_RUINED == 0 && status & STACK_IS_DESTRUCTED == 0){
             void *ptr = (void *) stack->data - sizeof(u_int64_t);
             
-            if (*((u_int64_t *)ptr) == HIPPO ^ ADDRESS(stack, stack_t))
+            if (*((u_int64_t *)ptr) != HIPPO ^ ADDRESS(stack, stack_t))
                 status |= STACK_DATA_IS_RUINED | DATA_LEFT_HIPPO_RUINED;
 
             ptr = ptr + sizeof(u_int64_t) + sizeof(Elem_t) * stack->capacity;
 
-            if (*((u_int64_t *)ptr) == POTAM ^ ADDRESS(stack, stack_t))
+            if (*((u_int64_t *)ptr) != POTAM ^ ADDRESS(stack, stack_t))
                 status |= STACK_DATA_IS_RUINED | DATA_RIGHT_POTAM_RUINED;
 
             ptr = ptr - sizeof(Elem_t) * stack->capacity;
         
             stack->data = (Elem_t *) ptr;
+        }
+    #endif
+
+    #if DEBUG_MODE & HASH_GUARD
+        if (stack->hash != CountHash(stack)){
+            status |= STACK_DATA_IS_RUINED | STACK_HASH_RUINED;
         }
     #endif
 
@@ -304,6 +376,12 @@ StatusCode StackIsEmpty(stack_t *stack){
 
     #if DEBUG_MODE & HIPPO_GUARD
         if (stack->HIPPO != 0 || stack->POTAM != 0){
+            stack_is_empty = 0;
+        }
+    #endif
+
+    #if DEBUG_MODE & HASH_GUARD
+        if (stack->hash != 0){
             stack_is_empty = 0;
         }
     #endif
@@ -333,7 +411,13 @@ StatusCode StackIsDestructed(stack_t *stack){
 
         #if DEBUG_MODE & HIPPO_GUARD
         &&
-          stack->HIPPO == 0xDEADF1DC && stack->POTAM == 0xAC4071CC
+          stack->HIPPO == 0xDEADF1DC ^ ADDRESS(stack, stack_t) && 
+          stack->POTAM == 0xAC47AC47 ^ ADDRESS(stack, stack_t)
+        #endif
+
+        #if DEBUG_MODE & HASH_GUARD
+        &&
+          stack->hash == 0xFA1EBACAUL
         #endif
 
         ){
@@ -341,48 +425,6 @@ StatusCode StackIsDestructed(stack_t *stack){
     }
 
     return RESULT_IS_UNKNOWN;
-}
-
-StatusCode CheckError(stack_t *stack){
-    if (stack == nullptr){
-        printf("STACK IS NULLPTR, ARE U CRAZY?\n");
-        return STACK_IS_NULLPTR;
-    }
-
-    if (stack->status){
-        const char *phrase = StackStatusPhrase(stack->status);
-        assert(phrase != nullptr);
-
-        // LOG FILE
-
-        printf("error №%x, %s\n", stack->status, phrase);
-
-        stack->status = STACK_IS_OK;
-    }
-
-    return STACK_IS_OK;
-}
-
-const char *StackStatusPhrase(int error_code){
-    switch (error_code){
-        case 0: return "OK";
-
-        CASE_OF_SWITCH(STACK_IS_NULLPTR)
-
-        CASE_OF_SWITCH(STACK_IS_DESTRUCTED)
-        CASE_OF_SWITCH(STACK_IS_EMPTY)
-        CASE_OF_SWITCH(DUMP_COMMITED)
-        
-        CASE_OF_SWITCH(STACK_IS_ALREADY_EMPTY)
-
-        CASE_OF_SWITCH(STACK_DATA_IS_NULLPTR)
-        CASE_OF_SWITCH(STACK_DATA_IS_RUINED)
-        
-        
-        CASE_OF_SWITCH(CANT_ALLOCATE_MEMORY)
-
-        default: return "UNDEFINED_ERROR";
-    }
 }
 
 void PrintElem_t(Elem_t *value){
@@ -402,23 +444,14 @@ int NumberOfCharacters(int edge){
     return num;
 }
 
-u_int64_t Hash(void *ptr, size_t number_of_bytes){
-    int sum = 0;
-
-    for (size_t i = 0; i < number_of_bytes; ++i){
-        sum += *(char *)ptr * (number_of_bytes - i);
-    }
-
-    return sum;
-}
-
 StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]/*, StatusCode stack_status, char *error_msg*/){
-    int stack_status = StackVerify(stack) | stack->status;
+    int stack_status = StackVerify(stack);
 
     if (stack_status == STACK_IS_NULLPTR){
-        printf("%s\n", StackStatusPhrase(stack_status));
+        printf("STACK_IS_NULLPTR\n");
         return DUMP_COMMITED;
     }
+
     if (StackIsEmpty(stack) == STACK_IS_EMPTY)
         stack_status = STACK_IS_EMPTY;
 
@@ -452,30 +485,36 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
         printf(", \"%s\" created at %s at %s \b(%d)", stack->info.name, stack->info.func, stack->info.file, stack->info.line);
     #endif
 
+    stack_status |= stack->status;
+
     if (stack_has_errors){
         printf("\n");
-        PRINT_ERROR(STACK_IS_ALREADY_EMPTY);
-        PRINT_ERROR(CANT_ALLOCATE_MEMORY);
+        PRINT_ERROR(STACK_IS_ALREADY_EMPTY)
+        PRINT_ERROR(CANT_ALLOCATE_MEMORY)
 
-        PRINT_ERROR(STACK_DATA_IS_RUINED);
+        PRINT_ERROR(STACK_DATA_IS_RUINED)
 
-        PRINT_ERROR(STACK_DATA_IS_NULLPTR);
-        PRINT_ERROR(STACK_SIZE_BIGGER_THAN_CAPACITY);
-        PRINT_ERROR(STACK_CAPACITY_LESS_THAN_ZERO);
-        PRINT_ERROR(STACK_SIZE_LESS_THAN_ZERO);
-        PRINT_ERROR(STACK_RESIZE_WRONG_PARAM);
+        PRINT_ERROR(STACK_DATA_IS_NULLPTR)
+        PRINT_ERROR(STACK_SIZE_BIGGER_THAN_CAPACITY)
+        PRINT_ERROR(STACK_CAPACITY_LESS_THAN_ZERO)
+        PRINT_ERROR(STACK_SIZE_LESS_THAN_ZERO)
+        PRINT_ERROR(STACK_RESIZE_WRONG_PARAM)
 
-        #if DEBUG_MODE & STACK_INFO
-            PRINT_ERROR(STACK_INFO_RUINED)
-        #endif
+    #if DEBUG_MODE & STACK_INFO
+        PRINT_ERROR(STACK_INFO_RUINED)
+    #endif
 
-        #if DEBUG_MODE & HIPPO_GUARD
-            PRINT_ERROR(STACK_LEFT_HIPPO_RUINED)
-            PRINT_ERROR(STACK_RIGHT_POTAM_RUINED)
+    #if DEBUG_MODE & HIPPO_GUARD
+        PRINT_ERROR(STACK_LEFT_HIPPO_RUINED)
+        PRINT_ERROR(STACK_RIGHT_POTAM_RUINED)
 
-            PRINT_ERROR(DATA_LEFT_HIPPO_RUINED)
-            PRINT_ERROR(DATA_RIGHT_POTAM_RUINED)
-        #endif
+        PRINT_ERROR(DATA_LEFT_HIPPO_RUINED)
+        PRINT_ERROR(DATA_RIGHT_POTAM_RUINED)
+    #endif
+
+    #if DEBUG_MODE & HASH_GUARD
+        PRINT_ERROR(STACK_HASH_RUINED)
+    #endif
     }
         
     printf("\n");
@@ -483,12 +522,16 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
     printf("    {\n");
     printf("    size = %d\n",     (int)stack->size);
     printf("    capacity = %d\n", (int)stack->capacity);
+    #if DEBUG_MODE & HASH_GUARD
+        printf("    hash = %x\n",     (int)stack->hash);
+    #endif
     printf("    data[%p]\n",           stack->data);
 
     if (stack_status == STACK_IS_OK){
         printf("        {\n");
         for (int i = 0; i < stack->capacity; i++){
-            printf("         data[%*d] = ", NumberOfCharacters((int)stack->capacity - 1), i); PrintElem_t(stack->data + i);
+            printf("         data[%*d] = ", NumberOfCharacters((int)stack->capacity - 1), i);
+            PrintElem_t(stack->data + i);
         }
         printf("        }\n");
     }
@@ -499,4 +542,3 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
 
     return DUMP_COMMITED;
 }
-

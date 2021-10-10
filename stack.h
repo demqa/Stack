@@ -8,7 +8,7 @@
 #define HIPPO_GUARD  02
 #define HASH_GUARD   04
 
-#define DEBUG_MODE   03
+#define DEBUG_MODE   07
 
 enum StatusCode{
     STACK_IS_OK                     = 0,
@@ -111,10 +111,6 @@ struct stack_t{
     }
 #endif
 
-// const int ADDITIONAL_SIZE = 1;
-
-const int START_SIZE      = 8;
-
 stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE], const char stack_name[STRING_MAX_SIZE]);
 StatusCode StackDtor(stack_t *stack);
 Elem_t StackPop(stack_t *stack);
@@ -123,18 +119,17 @@ StatusCode StackPush(stack_t *stack, Elem_t value);
 StatusCode StackIsDestructed(stack_t *stack);
 StatusCode StackIsEmpty(stack_t *stack);
 int StackVerify(stack_t *stack);
+u_int64_t Hash(void *memory, size_t number_of_bytes);
+u_int64_t CountHash(stack_t *stack);
+
 
 const char *StackStatusPhrase(int error_code);
 StatusCode CheckError(stack_t *stack);
 StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]);
 
-#define CASE_OF_SWITCH(error_code) \
-        case error_code:            \
-            return #error_code;      \
-
 #define STACK_STATUS(status_code){   \
     stack->status |= status_code;     \
-    return (StatusCode) stack->status;             \
+    return (StatusCode) stack->status; \
 }
 
 #if DEBUG_MODE & STACK_INFO
@@ -162,3 +157,5 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
 #define PRINT_PTR(ptr) printf("pointer %s at %p at line %d\n", #ptr, ptr, __LINE__);
 
 #define ADDRESS(ptr, type) (u_int64_t)(ptr - (type *)nullptr)
+
+#define PRINT_HASH printf("at line %d at %s hash was %x, counter = %d\n", __LINE__, __PRETTY_FUNCTION__, stack->hash, counter);
