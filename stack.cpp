@@ -5,8 +5,14 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
         return nullptr;
     }
 
-    if (!(StackIsEmpty(stack)      == STACK_IS_EMPTY ||
-          StackIsDestructed(stack) == STACK_IS_DESTRUCTED)){
+    if (StackIsEmpty(stack) != STACK_IS_EMPTY &&
+        StackIsDestructed(stack) != STACK_IS_DESTRUCTED
+
+        #if DEBUG_MODE & STACK_INFO
+        && StackInfoIsEmpty(stack)
+        #endif
+
+        ){
         return nullptr;
     }
 
@@ -26,7 +32,9 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
         return stack;
     }
 
-    #if DEBUG_MODE & CANARY_GUARD
+    if (capacity & 07 != 0) capacity = (capacity / 8 + 1) * 8;
+
+    #if DEBUG_MODE & HIPPO_GUARD
         stack->data = (Elem_t *) calloc(capacity * sizeof(Elem_t) + 2 * sizeof(u_int64_t), sizeof(char));
         if (stack->data == nullptr){
             stack->status = CANT_ALLOCATE_MEMORY;
@@ -39,15 +47,18 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
             stack->status = CANT_ALLOCATE_MEMORY;
             return stack;
         }
-        for (int i = 0; i < capacity; i++){
-            stack->data[i] = POISONED_ELEM;
-        }
     #endif
+
+    for (int i = 0; i < capacity; i++){
+        stack->data[i] = POISONED_ELEM;
+    }
 
     stack->size     = 0;
     stack->capacity = capacity;
 
     stack->status   = STACK_IS_OK;
+
+    ASSERT_OK(stack);
 
     return stack;
 }
@@ -55,7 +66,7 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
 Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
     ASSERT_OK(stack);
 
-    StackDump(stack);
+    // StackDump(stack);
     
     size_t new_capacity = 0;
 
@@ -73,15 +84,15 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
 
     if (new_capacity < 8) new_capacity = 8;
 
-    #if DEBUG_MODE & CANARY_GUARD
+    #if DEBUG_MODE & HIPPO_GUARD
         Elem_t *try_realloc = (Elem_t *) realloc(stack->data - sizeof(u_int64_t), sizeof(Elem_t) * new_capacity + 2 * sizeof(u_int64_t));
     #else
-        // printf("ptr = %p, new_capacity = %d, sizeof(Elem_t) = %d, bytes = %d\n", stack->data, new_capacity, sizeof(Elem_t), sizeof(Elem_t) * new_capacity);
         Elem_t *try_realloc = (Elem_t *) realloc(stack->data, new_capacity * sizeof(Elem_t));
     #endif
 
     if (try_realloc == nullptr){
         stack->status |= CANT_ALLOCATE_MEMORY;
+        StackDump(stack);
         return nullptr;
     }
 
@@ -97,7 +108,7 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
 
     ASSERT_OK(stack);
 
-    StackDump(stack);
+    // StackDump(stack);
 
     return stack->data;
 }
@@ -110,33 +121,8 @@ StatusCode StackPush(stack_t *stack, Elem_t value){
 
     ASSERT_OK(stack);
 
-    if (stack->data == nullptr && stack->capacity == 0){
-        #if DEBUG_MODE & CANARY_GUARD
-            stack->data = (Elem_t *) calloc(START_SIZE * sizeof(Elem_t) + 2 * sizeof(u_int64_t), sizeof(char));
-        #else
-            stack->data = (Elem_t *) calloc(START_SIZE, sizeof(Elem_t));
-        #endif
-        
-        // RESIZE_PLS
-
-        if (stack->data == nullptr){
-            stack->status |= CANT_ALLOCATE_MEMORY;
-            StackDump(stack);
-            return (StatusCode) stack->status;
-        }
-
-        for (int i = 0; i < START_SIZE; i++){
-            stack->data[i] = POISONED_ELEM;
-        }
-        
-        #if DEBUG_MODE & CANARY_GUARD
-            stack->data += sizeof(u_int64_t);
-        #endif
-
-        stack->capacity = START_SIZE;
-    }
-    
-    if (stack->size == stack->capacity){
+    if (stack->data == nullptr && stack->capacity == 0 ||
+        stack->size == stack->capacity){
 
         Elem_t *try_realloc = ResizeStack(stack, INCREASE_CAPACITY);
         if (try_realloc == nullptr){
@@ -151,7 +137,7 @@ StatusCode StackPush(stack_t *stack, Elem_t value){
 
     ASSERT_OK(stack);
 
-    StackDump(stack);
+    // StackDump(stack);
 
     return STACK_IS_OK;
 }
@@ -184,7 +170,7 @@ Elem_t StackPop(stack_t *stack){
 
     ASSERT_OK(stack);
 
-    StackDump(stack);
+    // StackDump(stack);
 
     return data_elem;
 }
@@ -215,7 +201,7 @@ StatusCode StackDtor(stack_t *stack){
     }
     stack->size = 0;
 
-    #if DEBUG_MODE & CANARY_GUARD
+    #if DEBUG_MODE & HIPPO_GUARD
         free(stack->data - sizeof(u_int64_t));
     #else
         free(stack->data);
@@ -252,6 +238,10 @@ int StackVerify(stack_t *stack){
             status |= STACK_DATA_IS_RUINED | STACK_INFO_RUINED;
         }
     #endif
+
+    #if DEBUG_MODE & HIPPO_GUARD
+        // TODO
+    #endif
     
     if (stack->size > stack->capacity)
         status |= STACK_DATA_IS_RUINED | STACK_SIZE_BIGGER_THAN_CAPACITY;
@@ -268,19 +258,36 @@ int StackVerify(stack_t *stack){
 }
 
 StatusCode StackIsEmpty(stack_t *stack){
+    int stack_is_empty = 1;
+
+    if (stack->data != nullptr || stack->size != 0 || stack->capacity != 0 || stack->status != STACK_IS_OK){
+        stack_is_empty = 0;
+    }
+
     #if DEBUG_MODE & STACK_INFO
-        if (stack->data == nullptr && stack->size == 0 && stack->capacity == 0 && stack->status == STACK_IS_OK &&
-            stack->info.line == 0 && stack->info.file == nullptr && stack->info.func == nullptr && stack->info.name == nullptr){
-            return STACK_IS_EMPTY;
-        }
-    #else
-        if (stack->data == nullptr && stack->size == 0 && stack->capacity == 0 && stack->status == STACK_IS_OK){
-            return STACK_IS_EMPTY;
+        if (!StackInfoIsEmpty(stack)){
+            stack_is_empty = 0;
         }
     #endif
 
-    return RESULT_IS_UNKNOWN;
+    #if DEBUG_MODE & HIPPO_GUARD
+        if (!(stack->HIPPO == 0 && stack->POTAMUS == 0)){
+            stack_is_empty = 0;
+        }
+    #endif
+
+    if (stack_is_empty)
+        return STACK_IS_EMPTY;
+    else
+        return RESULT_IS_UNKNOWN;
+
 }
+
+#if DEBUG_MODE & STACK_INFO
+    int StackInfoIsEmpty(stack_t *stack){
+        return stack->info.line == 0 && stack->info.file == nullptr && stack->info.func == nullptr && stack->info.name == nullptr;
+    }
+#endif
 
 StatusCode StackIsDestructed(stack_t *stack){
     #if DEBUG_MODE & STACK_INFO
@@ -426,30 +433,21 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
     printf("\n");
 
     printf("    {\n");
-
-    // PRINT_LINE;
-
     printf("    size = %d\n",     (int)stack->size);
     printf("    capacity = %d\n", (int)stack->capacity);
-
-    printf("    data[%p]\n", stack->data);
+    printf("    data[%p]\n",           stack->data);
 
     if (stack_status == STACK_IS_OK){
         printf("        {\n");
         for (int i = 0; i < stack->capacity; i++){
-            printf("         data[%*d] = ", NumberOfCharacters((int)stack->capacity - 1), i);
-            PrintElem_t(stack->data + i);
+            printf("         data[%*d] = ", NumberOfCharacters((int)stack->capacity - 1), i); PrintElem_t(stack->data + i);
         }
         printf("        }\n");
     }
 
-
     printf("    }\n");
 
-    printf("........Dumped...\n\n");
-    
-    // commented because of empty stack will not be empty anymore...
-    // stack->status += DUMP_COMMITED;
+    printf("_________________DDDuMpEDDD_________________\n\n");
 
     return DUMP_COMMITED;
 }

@@ -5,7 +5,7 @@
 #include <assert.h>
 
 #define STACK_INFO   01
-#define CANARY_GUARD 02
+#define HIPPO_GUARD  02
 #define HASH_GUARD   04
 
 #define DEBUG_MODE   01
@@ -17,7 +17,6 @@ enum StatusCode{
     STACK_IS_DESTRUCTED            = 1 << 30,
     STACK_IS_EMPTY                 = 1 << 29,
     
-
     STACK_IS_NULLPTR                = 1 << 0,
     STACK_IS_ALREADY_EMPTY          = 1 << 1,
     CANT_ALLOCATE_MEMORY            = 1 << 2,
@@ -29,12 +28,12 @@ enum StatusCode{
 
     STACK_RESIZE_WRONG_PARAM        = 1 << 25,
     
-    #if DEBUG_MODE & 01
+    #if DEBUG_MODE & STACK_INFO
         STACK_INFO_RUINED           = 1 << 26,
     #endif
 
-    #if DEBUG_MODE & CANARY_GUARD
-        STACK_CANARIES_RUINED       = 1 << 27,
+    #if DEBUG_MODE & HIPPO_GUARD
+        STACK_HIPPOS_RUINED       = 1 << 27,
     #endif
 
     #if DEBUG_MODE & HASH_GUARD
@@ -50,12 +49,6 @@ enum ResizeMode{
 
 
 
-// debug mode & 01   STACK_INFO
-// debug mode & 02   CANARIES
-// debug mode & 04   HASH
-// debug mode & 010  
-
-
 const int STRING_MAX_SIZE = 100;
 
 struct Elem_t{
@@ -67,7 +60,7 @@ const Elem_t POISONED_ELEM = {
     666,
 };
 
-#if DEBUG_MODE & 01
+#if DEBUG_MODE & STACK_INFO
     struct StackInfo{
         int line;
         const char *file;
@@ -77,7 +70,7 @@ const Elem_t POISONED_ELEM = {
 #endif
 
 struct stack_t{
-    #if DEBUG_MODE & CANARY_GUARD
+    #if DEBUG_MODE & HIPPO_GUARD
         u_int64_t HIPPO;
     #endif
 
@@ -90,14 +83,18 @@ struct stack_t{
         u_int64_t hash;
     #endif
 
-    #if DEBUG_MODE & 01
+    #if DEBUG_MODE & STACK_INFO
         StackInfo info;
     #endif
 
-    #if DEBUG_MODE & CANARY_GUARD
+    #if DEBUG_MODE & HIPPO_GUARD
         u_int64_t POTAMUS;
     #endif
 };
+
+#if DEBUG_MODE & STACK_INFO
+    int StackInfoIsEmpty(stack_t *stack);
+#endif
 
 #ifdef DEBUG_MODE
     #define ASSERT_OK(stack){                    \
@@ -108,7 +105,7 @@ struct stack_t{
     }
 #endif
 
-const int ADDITIONAL_SIZE = 1;
+// const int ADDITIONAL_SIZE = 1;
 
 const int START_SIZE      = 8;
 
@@ -134,7 +131,7 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
     return (StatusCode) stack->status;             \
 }
 
-#if DEBUG_MODE & 01
+#if DEBUG_MODE & STACK_INFO
     #define StackCtor(stack, capacity){                                               \
         StackCtor_(stack, capacity, __LINE__, __FILE__, __PRETTY_FUNCTION__, #stack);  \
     }

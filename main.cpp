@@ -5,123 +5,40 @@ int main(){
     stack_t stack = {};
 
     size_t initial_capacity = 0;
-    
-    
-    // StackDump(&stack);
-    // PRINT_LINE;
+
+    StackDump(&stack);
 
     StackCtor(&stack, initial_capacity);
-    // PRINT_LINE;
-      
+
+    StackDump(&stack);
+
+    PRINT_LINE;
+    StackCtor(&stack, 123);
+    PRINT_LINE;
+
+    StackDump(&stack);
+    PRINT_LINE;
+
+    // StackPush(&stack, {15});
+
+    // StackPush(&stack, {1337});
+    // StackPush(&stack, {1337});
+
+    // StackPush(&stack, {223});
+    // StackPush(&stack, {330});
+    // StackPush(&stack, {230});
+    // StackPush(&stack, {707});
+
     // StackDump(&stack);
-    // PRINT_LINE;
-    // check how not to initialize stack again
 
-    StackPush(&stack, {15});
-    // PRINT_LINE;
-
-    // PRINT_LINE;
-
-    // StackDump(&stack);
-
-    StackPush(&stack, {1488});
-    StackPush(&stack, {1488});
-    StackPush(&stack, {1488});
-    StackPush(&stack, {1488});
-    StackPush(&stack, {1488});
-
-    StackPush(&stack, {223});
-
-    StackPush(&stack, {330});
-
-    StackPush(&stack, {230});
-
-    StackPush(&stack, {707});
-
-    
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
-    StackPush(&stack, {1000 - 7});
+    // for (int i = 0; i < 30; i++) StackPush(&stack, {1000 - 7});
 
 
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
-    StackPop(&stack);
+    // for (int i = 0; i < 20; ++i) StackPop(&stack);
 
 
-    StackDtor(&stack);
+
+    // StackDtor(&stack);
 
     StackDtor(&stack);
     
