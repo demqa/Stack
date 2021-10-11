@@ -8,17 +8,7 @@ int main(){
 
     // StackDump(&stack);
 
-    StackCtor(&stack, initial_capacity);
-
-    PRINT_LINE;
-
-    PRINT_PTR(&stack);
     
-    // PRINT_PTR(stack.data);
-
-    // stack.data = (Elem_t *) (0xBADBAD);
-
-    // PRINT_PTR(stack.data);
 
     // StackDump(&stack);
 

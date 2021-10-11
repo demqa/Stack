@@ -1,36 +1,38 @@
 #include "stack.h"
 
-u_int64_t Hash(void *memory, size_t number_of_bytes){
-    u_int64_t sum = 0;
+#if DEBUG_MODE & HASH_GUARD
 
-    for (size_t i = 0; i < number_of_bytes; ++i){
-        sum += (*((char *)memory + i) + 300) * (number_of_bytes * i);
+    u_int64_t Hash(void *memory, size_t number_of_bytes){
+        u_int64_t sum = 0;
+
+        for (size_t i = 0; i < number_of_bytes; ++i){
+            sum += (*((char *)memory + i) + 300) * (number_of_bytes * i);
+        }
+
+        return sum;
     }
 
-    return sum;
-}
+    u_int64_t CalculateHash(stack_t *stack){
+        if (stack == nullptr){
+            return (u_int64_t)STACK_IS_NULLPTR;
+        }
 
-u_int64_t CountHash(stack_t *stack){
-    if (stack == nullptr){
-        return (u_int64_t)STACK_IS_NULLPTR;
+        u_int64_t this_hash_was_in_stack = stack->hash;
+        stack->hash = 0;
+
+        u_int64_t hash = Hash((void *)stack, sizeof(stack));
+
+        if (stack->data != nullptr || StackIsDestructed(stack) != STACK_IS_DESTRUCTED){
+            hash += Hash((void *)stack->data, stack->capacity * sizeof(Elem_t));
+        }
+
+        hash += ADDRESS(stack->data, Elem_t);
+        stack->hash = this_hash_was_in_stack;
+        
+        return hash;
     }
 
-    u_int64_t this_hash_was_in_stack = stack->hash;
-
-    stack->hash = 0;
-
-    u_int64_t hash = Hash((void *)stack, sizeof(stack));
-
-    if (stack->data != nullptr || StackIsDestructed(stack) != STACK_IS_DESTRUCTED){
-        hash += Hash((void *)stack->data, stack->capacity * sizeof(Elem_t));
-    }
-
-    hash += ADDRESS(stack->data, Elem_t);
-
-    stack->hash = this_hash_was_in_stack;
-    
-    return hash;
-}
+#endif
 
 stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE], const char stack_name[STRING_MAX_SIZE]){
     if (stack == nullptr){
@@ -49,8 +51,6 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
         return nullptr;
     }
 
-    PRINT_LINE;
-
     #if DEBUG_MODE & STACK_INFO
         stack->info.file = file;
         stack->info.func = func;
@@ -66,8 +66,6 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
 
         return stack;
     }
-
-    PRINT_LINE;
 
     if (capacity & 07 != 0) capacity = (capacity / 8 + 1) * 8;
 
@@ -98,8 +96,6 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
         }
     #endif
 
-    PRINT_LINE;
-
     for (int i = 0; i < capacity; i++){
         stack->data[i] = POISONED_ELEM;
     }
@@ -110,16 +106,10 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
     stack->status   = STACK_IS_OK;
 
     #if DEBUG_MODE & HASH_GUARD
-        stack->hash = CountHash(stack);
+        stack->hash = CalculateHash(stack);
     #endif
 
-    printf("stack->hash = %x\n", stack->hash);
-
-    PRINT_LINE;
-
     ASSERT_OK(stack);
-
-    PRINT_LINE;
 
     return stack;
 }
@@ -171,7 +161,7 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
     stack->capacity = new_capacity;
 
     #if DEBUG_MODE & HASH_GUARD
-        stack->hash = CountHash(stack);
+        stack->hash = CalculateHash(stack);
     #endif
 
     ASSERT_OK(stack);
@@ -201,7 +191,7 @@ StatusCode StackPush(stack_t *stack, Elem_t value){
     stack->data[stack->size++] = value;
 
     #if DEBUG_MODE & HASH_GUARD
-        stack->hash = CountHash(stack);
+        stack->hash = CalculateHash(stack);
     #endif
 
     ASSERT_OK(stack);
@@ -236,7 +226,7 @@ Elem_t StackPop(stack_t *stack){
     }
 
     #if DEBUG_MODE & HASH_GUARD
-        stack->hash = CountHash(stack);
+        stack->hash = CalculateHash(stack);
     #endif
 
     ASSERT_OK(stack);
@@ -351,7 +341,7 @@ int StackVerify(stack_t *stack){
     #endif
 
     #if DEBUG_MODE & HASH_GUARD
-        if (stack->hash != CountHash(stack)){
+        if (stack->hash != CalculateHash(stack)){
             status |= STACK_DATA_IS_RUINED | STACK_HASH_RUINED;
         }
     #endif
@@ -445,6 +435,28 @@ int NumberOfCharacters(int edge){
 }
 
 StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]/*, StatusCode stack_status, char *error_msg*/){
+    static int r = 0;
+    if (r++ == 0){
+        printf(".....$*$*\n"
+               "...$*....$*............$*.\n"
+               "..$*.......$*.......$*....$*\n"
+               ".$*.........$*....$*.......$*\n"
+               ".$*...........$*.$*........$*\n"
+               ".$*.............*.........$*\n"
+               "..$*....................$*\n"
+               "...$*.................$*\n"
+               "... $*..............$*\n"
+               ".....$*...........$*\n"
+               "......$*........$*\n"
+               "........$*....$*\n"
+               ".........$*.$*\n"
+               "..........*$*\n"
+               "...........$\n"
+               "...........*\n"
+               "...........$\n"
+               "...........*\n\n");
+    }
+
     int stack_status = StackVerify(stack);
 
     if (stack_status == STACK_IS_NULLPTR){

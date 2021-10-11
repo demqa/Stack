@@ -119,12 +119,7 @@ StatusCode StackPush(stack_t *stack, Elem_t value);
 StatusCode StackIsDestructed(stack_t *stack);
 StatusCode StackIsEmpty(stack_t *stack);
 int StackVerify(stack_t *stack);
-u_int64_t Hash(void *memory, size_t number_of_bytes);
-u_int64_t CountHash(stack_t *stack);
 
-
-const char *StackStatusPhrase(int error_code);
-StatusCode CheckError(stack_t *stack);
 StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]);
 
 #define STACK_STATUS(status_code){   \
