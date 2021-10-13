@@ -8,61 +8,60 @@ int main(){
 
     // StackDump(&stack);
 
+    // StackPush(&stack, 11);
+    hack1;
+
+    // StackDump(&stack);
+
+    StackCtor(&stack, 3, nullptr);
+    StackCtor(&stack, 3, nullptr);
+    StackCtor(&stack, 3, nullptr);
+    StackCtor(&stack, 3, nullptr);
+
+    // StackDump(&stack);
+
+    StackPush(&stack, 1);
+
+    // StackDump(&stack);
+
+    // stack.hash_data = 0x32321UL;
+
+    StackPush(&stack, 2);
+
+    // StackDump(&stack);
     
+    StackPush(&stack, 3);
+
+    StackPush(&stack, 4);
+    StackPush(&stack, 5);
+    StackPush(&stack, 6);
+    StackPush(&stack, 7);
+
+    StackDump(&stack);
+
+    StackPush(&stack, 8);
+
+    StackDump(&stack);
+
+    StackPush(&stack, 9);
 
     // StackDump(&stack);
 
-    StackCtor(&stack, 3);
-
-    StackDump(&stack);
-
-    StackPush(&stack, {15});
-
-    StackPush(&stack, {1337});
-    StackPush(&stack, {1337});
-
-    StackPush(&stack, {223});
-    StackPush(&stack, {330});
-    StackPush(&stack, {230});
-    StackPush(&stack, {707});
-
-    StackDump(&stack);
-
-    StackPush(&stack, {223});
-
-    StackDump(&stack);
-
-    StackPush(&stack, {330});
-
-    StackDump(&stack);
+    // PRINT_LINE;
 
     // StackPush(&stack, {230});
 
     // StackDump(&stack);
-    // StackDump(&stack);
 
-    // StackPush(&stack, {707});
-    // StackDump(&stack);
+    // for (int i = 0; i < 60; i++) StackPush(&stack, {1000 - 7});
 
-    // StackPush(&stack, {223});
-    // StackPush(&stack, {330});
-    // StackPush(&stack, {230});
-    // StackPush(&stack, {707});
-    // StackPush(&stack, {223});
+    StackDump(&stack);
 
-    // StackPush(&stack, {330});
+    for (int i = 0; i < 40; ++i) StackPop(&stack);
 
-    // StackPush(&stack, {230});
-    // StackPush(&stack, {707});
-    
+    StackPush(&stack, 123);
 
-    // StackDump(&stack);
-
-    // for (int i = 0; i < 30; i++) StackPush(&stack, {1000 - 7});
-
-    // StackDump(&stack);
-
-    // for (int i = 0; i < 20; ++i) StackPop(&stack);
+    StackDump(&stack);
 
     // PRINT_LINE;
 
@@ -70,7 +69,7 @@ int main(){
 
     // PRINT_LINE;
 
-    // StackDump(&stack);
+    StackDump(&stack);
 
     // PRINT_LINE;
 
@@ -79,6 +78,12 @@ int main(){
     // PRINT_LINE;
 
     StackDtor(&stack);
+
+    StackDtor(&stack);
+
+    StackDtor(&stack);
+
+    // PRINT_LINE;
 
     StackDump(&stack);
     
