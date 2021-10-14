@@ -1,3 +1,7 @@
+#ifndef STACK_H
+
+#define STACK_H
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -8,7 +12,7 @@
 #define HIPPO_GUARD  02
 #define HASH_GUARD   04
 
-#define DEBUG_MODE   07
+#include "stack_config.h"
 
 // TODO DEBUG_MODE = 010 WHEN I PRINT EVERY SINGLE DESTRUCTED
 // WITH CHECKING OF ERRNO 5 AND CHECK WHEN I CALL
@@ -31,9 +35,11 @@ enum StatusCode{
     STACK_CAPACITY_LESS_THAN_ZERO   = 1 << 6,
     STACK_SIZE_LESS_THAN_ZERO       = 1 << 7,
 
+
     STACK_RESIZE_WRONG_PARAM        = 1 << 20,
     
 #if DEBUG_MODE & STACK_INFO
+    STACK_IS_ALREADY_CONSTRUCTED    = 1 << 16,
     STACK_INFO_IS_EMPTY             = 1 << 21,
     STACK_INFO_RUINED               = 1 << 22,
     STACK_INFO_IS_OK                = 1 << 15,
@@ -54,20 +60,12 @@ enum StatusCode{
     
 };
 
-#define $  
 enum ResizeMode{
     INCREASE_CAPACITY = 0xD0DE,
     DECREASE_CAPACITY = 0xF0E5,
 };
 
-const u_int64_t HIPPO = 0xAC1DC1DA;
-const u_int64_t POTAM = 0xD1CAAC1D;
-
 const int STRING_MAX_SIZE = 100;
-
-typedef int Elem_t;
-
-const Elem_t POISONED_ELEM = 3802;
 
 #if DEBUG_MODE & STACK_INFO
     struct StackInfo{
@@ -89,7 +87,7 @@ struct stack_t{
     size_t capacity;
     int status;
 
-    void (* PrintElem)(void *memory, size_t n_bytes);
+    void (* PrintElem)(void *memory, size_t n_bytes, FILE *stream);
 
 #if DEBUG_MODE & HASH_GUARD
     u_int64_t hash_stack;
@@ -106,6 +104,33 @@ struct stack_t{
 
 };
 
+stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE], const char stack_name[STRING_MAX_SIZE], void (* PrintElem)(void *, size_t, FILE *));
+StatusCode StackDtor(stack_t *stack);
+Elem_t StackPop(stack_t *stack);
+Elem_t StackTop(stack_t *stack);
+StatusCode StackPush(stack_t *stack, Elem_t value);
+
+StatusCode StackIsDestructed(stack_t *stack);
+StatusCode StackIsEmpty(stack_t *stack);
+int StackVerify(stack_t *stack);
+
+void PrintHex(void *memory, size_t size, FILE *stream);
+
+StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]);
+
+#define STACK_STATUS(status_code){   \
+    stack->status |= status_code;     \
+    StackDump(stack);                  \
+    return (StatusCode) stack->status;  \
+}
+
+// TODO DO WHILE(0)
+
+#if DEBUG_MODE & HIPPO_GUARD
+    const u_int64_t HIPPO = 0xAC1DC1DA;
+    const u_int64_t POTAM = 0xD1CAAC1D;
+#endif
+
 #if DEBUG_MODE & STACK_INFO
     StatusCode StackInfoStatus(stack_t *stack);
 #endif
@@ -118,28 +143,6 @@ struct stack_t{
         }                                            \
     }
 #endif
-
-stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE], const char stack_name[STRING_MAX_SIZE], void (* PrintElem)(void *, size_t));
-StatusCode StackDtor(stack_t *stack);
-Elem_t StackPop(stack_t *stack);
-StatusCode StackPush(stack_t *stack, Elem_t value);
-
-StatusCode StackIsDestructed(stack_t *stack);
-StatusCode StackIsEmpty(stack_t *stack);
-int StackVerify(stack_t *stack);
-
-void PrintHex(void *memory, size_t size, FILE *stream);
-void PrintDec(void *memory, size_t size, FILE *stream);
-
-StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]);
-
-#define STACK_STATUS(status_code){   \
-    stack->status |= status_code;     \
-    StackDump(stack);                  \
-    return (StatusCode) stack->status;  \
-}
-
-// TODO DO WHILE(0)
 
 #if DEBUG_MODE & STACK_INFO
     #define StackCtor(stack, capacity, func){                                               \
@@ -171,31 +174,4 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
 
 #define ADDRESS(ptr, type) (u_int64_t)(ptr - (type *)nullptr)
 
-
-
-#define PRINT_LINE printf("I'm at %s at line %d\n", __PRETTY_FUNCTION__, __LINE__);
-
-#define PRINT_PTR(ptr) printf("pointer %s at %p at line %d\n", #ptr, ptr, __LINE__);
-
-#define PRINT_HASH printf("at line %d at %s hash was %x, counter = %d\n", __LINE__, __PRETTY_FUNCTION__, stack->hash, counter);
-
-#define PRINT(str) printf("%s\n", #str);
-
-#define hack1{                             \
-    StackCtor(&stack, initial_capacity, nullptr);    \
-                                             \
-    StackPush(&stack, {123});                 \
-    StackPush(&stack, {456});                  \
-                                                \
-    StackDump(&stack);                           \
-                                                  \
-    PRINT_PTR(stack.data);                         \
-                                                    \
-    stack.data = (Elem_t *) (0xBADBAD);              \
-                                                      \
-    PRINT_PTR(stack.data);                             \
-                                                        \
-    StackPush(&stack, {9842});                           \
-                                                          \
-    StackDump(&stack);                                     \
-}
+#endif

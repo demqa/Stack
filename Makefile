@@ -4,10 +4,9 @@ CC=g++
 # CFLAGS = CompilatorFLAGS
 CFLAGS=-c
 
-
 all: program
 
-program: main.o stack.o
+program: main.o stack.o 
 	$(CC) main.o stack.o -o program
 
 main.o: main.cpp

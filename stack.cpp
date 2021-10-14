@@ -48,23 +48,23 @@
 
 #endif
 
-stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE], const char stack_name[STRING_MAX_SIZE], void (* PrintElem)(void *, size_t) = nullptr){
+stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE], const char stack_name[STRING_MAX_SIZE], void (* PrintElem)(void *, size_t, FILE *)){
     if (stack == nullptr){
         return nullptr;
     }
 
     if (StackIsEmpty(stack)       != STACK_IS_EMPTY &&
-        StackIsDestructed(stack)  != STACK_IS_DESTRUCTED
-
-    #if DEBUG_MODE & STACK_INFO
-        &&
-      !(StackInfoStatus(stack)    == STACK_INFO_IS_EMPTY)
-    #endif
-
-        ){
-        
+        StackIsDestructed(stack)  != STACK_IS_DESTRUCTED){
         return nullptr;
     }
+    
+// #if DEBUG_MODE & STACK_INFO
+//     if (!(StackInfoStatus(stack) == STACK_INFO_IS_EMPTY)){
+//         stack->status |= STACK_IS_ALREADY_CONSTRUCTED;
+//         StackDump(stack);
+//         return nullptr;
+//     }
+// #endif    
 
 #if DEBUG_MODE & STACK_INFO
     stack->info.file = file;
@@ -153,10 +153,16 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
 
     if (new_capacity == stack->capacity) return stack->data;
 
+    if (mode == DECREASE_CAPACITY){
+        for (size_t i = new_capacity; i < stack->capacity; ++i){
+            stack->data[i] = POISONED_ELEM;
+        }
+    }
+
 #if DEBUG_MODE & HIPPO_GUARD
-    void *try_realloc = (void *) realloc((void *)stack->data - sizeof(u_int64_t), sizeof(Elem_t) * new_capacity + 2 * sizeof(u_int64_t));
+    void *try_realloc = realloc((void *)((char *)stack->data - sizeof(u_int64_t)), sizeof(Elem_t) * new_capacity + 2 * sizeof(u_int64_t));
 #else
-    void *try_realloc = (void *) realloc(stack->data, new_capacity * sizeof(Elem_t));
+    void *try_realloc = realloc((void *)stack->data, new_capacity * sizeof(Elem_t));
 #endif
 
     if (try_realloc == nullptr){
@@ -167,21 +173,16 @@ Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
 
 #if DEBUG_MODE & HIPPO_GUARD
     *((u_int64_t *)try_realloc) = stack->HIPPO;
-    try_realloc = try_realloc + sizeof(u_int64_t) + sizeof(Elem_t) * stack->capacity;
+    try_realloc = try_realloc + sizeof(u_int64_t) + sizeof(Elem_t) * new_capacity;
 
     *((u_int64_t *)try_realloc) = stack->POTAM;
-    try_realloc = try_realloc - sizeof(Elem_t) * stack->capacity;
+    try_realloc = try_realloc - sizeof(Elem_t) * new_capacity;
 #endif
 
     stack->data = (Elem_t *) try_realloc;
 
     if (mode == INCREASE_CAPACITY){
         for (size_t i = stack->capacity; i < new_capacity; ++i){
-            stack->data[i] = POISONED_ELEM;
-        }
-    }
-    if (mode == DECREASE_CAPACITY){
-        for (size_t i = new_capacity + 1; i < stack->capacity; ++i){
             stack->data[i] = POISONED_ELEM;
         }
     }
@@ -215,6 +216,8 @@ StatusCode StackPush(stack_t *stack, Elem_t value){
             StackDump(stack);
             return (StatusCode) stack->status;
         }
+
+        stack->data = try_resize;
     }
 
     stack->data[stack->size++] = value;
@@ -243,8 +246,8 @@ Elem_t StackPop(stack_t *stack){
         return POISONED_ELEM;
     }
     
-    Elem_t data_elem = stack->data[stack->size];
-    stack->data[stack->size--] = POISONED_ELEM;
+    Elem_t data_elem = stack->data[--stack->size];
+    stack->data[stack->size] = POISONED_ELEM;
 
 #if DEBUG_MODE & HASH_GUARD
     stack->hash_data = CalculateHashData(stack);
@@ -267,6 +270,25 @@ Elem_t StackPop(stack_t *stack){
 #endif
 
     ASSERT_OK(stack);
+
+    return data_elem;
+}
+
+Elem_t StackTop(stack_t *stack){
+    if (stack == nullptr){
+        StackDump(stack);
+        return POISONED_ELEM;
+    }
+
+    ASSERT_OK(stack);
+
+    if (stack->size == 0){
+        stack->status |= STACK_IS_ALREADY_EMPTY;
+        StackDump(stack);
+        return POISONED_ELEM;
+    }
+    
+    Elem_t data_elem = stack->data[stack->size - 1];
 
     return data_elem;
 }
@@ -478,17 +500,14 @@ StatusCode StackIsDestructed(stack_t *stack){
 }
 
 // TODO printf to fprintf
-void PrintHex(void *memory, size_t size, FILE *stream = stdout){
-    if (memory != nullptr && memory != (void *)(1000 - 7)){
-        for (void *c = memory + size - 1; c >= memory; c--){
+void PrintHex(void *memory, size_t size, FILE *stream){
+    char *mem = (char *) memory;
+    if (mem != nullptr && mem != (char *)(1000 - 7)){
+        for (char *c = mem + size - 1; c >= mem; c--){
             fprintf(stream, "%02x ", *((u_int8_t *)c));
         }
     }
     fprintf(stream, "\n");
-}
-
-void PrintDec(void *memory, size_t size, FILE *stream = stdout){
-    fprintf(stream, "{%d}\n", *((int *)memory));
 }
 
 int NumberOfCharacters(int edge){
@@ -500,24 +519,24 @@ int NumberOfCharacters(int edge){
 StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]){
     static int r = 0;
     if (r++ == 0){
-        printf(".....$*$*\n"
-               "...$*....$*............$*.\n"
-               "..$*.......$*.......$*....$*\n"
+        printf(".....$*$*....................\n"
+               "...$*....$*............$*....\n"
+               "..$*.......$*.......$*....$*.\n"
                ".$*.........$*....$*.......$*\n"
                ".$*...........$*.$*........$*\n"
-               ".$*.............*.........$*\n"
-               "..$*....................$*\n"
-               "...$*.................$*\n"
-               "... $*..............$*\n"
-               ".....$*...........$*\n"
-               "......$*........$*\n"
-               "........$*....$*\n"
-               ".........$*.$*\n"
-               "..........*$*\n"
-               "..........$\n"
-               ".........*\n"
-               "........$\n"
-               ".......*\n\n");
+               ".$*.............*.........$*.\n"
+               "..$*....................$*...\n"
+               "...$*.................$*.....\n"
+               "... $*..............$*.......\n"
+               ".....$*...........$*.........\n"
+               "......$*........$*...........\n"
+               "........$*....$*.............\n"
+               ".........$*.$*...............\n"
+               "..........*$*....<3..<3......\n"
+               "..........$.....<3.<3.<3.....\n"
+               ".........*......<3....<3.....\n"
+               "........$........<3..<3......\n"
+               ".......*...........<3........\n\n");
     }
 
     if (stack == nullptr){
@@ -527,7 +546,7 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
 
     printf("stack<Elem_t>[%p] ", stack);
 
-    int stack_status = 0;
+    int stack_status       = 0;
     int stack_has_errors   = 0;
     int stack_has_warnings = 0;
 
@@ -563,12 +582,12 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
     if (stack_has_warnings){
         printf("\n");
         PRINT_WARNING(STACK_IS_ALREADY_EMPTY);
+        PRINT_WARNING(STACK_IS_ALREADY_CONSTRUCTED);
         PRINT_WARNING(CANT_ALLOCATE_MEMORY);
     }
     else
     if (stack_has_errors){
         printf("\n");
-
         PRINT_ERROR(STACK_DATA_IS_RUINED);
 
         PRINT_ERROR(STACK_DATA_IS_NULLPTR);
@@ -601,19 +620,19 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
     printf("    size = %d\n",     (int)stack->size);
     printf("    capacity = %d\n", (int)stack->capacity);
 #if DEBUG_MODE & HASH_GUARD
-    printf("    hash_stack = "); PrintHex((void *)&stack->hash_stack, sizeof(u_int64_t));
-    printf("    hash_data  = "); PrintHex((void *)&stack->hash_data,  sizeof(u_int64_t));
+    printf("    hash_stack = "); PrintHex((void *)&stack->hash_stack, sizeof(u_int64_t), stdout);
+    printf("    hash_data  = "); PrintHex((void *)&stack->hash_data,  sizeof(u_int64_t), stdout);
 #endif
     printf("    data[%p]\n",           stack->data);
 
-    if (stack_status == STACK_IS_OK){
+    if (!stack_has_errors){
         printf("        {\n");
         for (size_t i = 0; i < stack->capacity; i++){
             printf("         data[%*d] = ", NumberOfCharacters((int)stack->capacity - 1), i);
             if (stack->PrintElem != nullptr)
-                stack->PrintElem((void *)(&stack->data[i]), sizeof(Elem_t));
+                stack->PrintElem((void *)(&stack->data[i]), sizeof(Elem_t), stdout);
             else
-                PrintHex((void *)(&stack->data[i]), sizeof(Elem_t));
+                PrintHex((void *)(&stack->data[i]), sizeof(Elem_t), stdout);
         }
         printf("        }\n");
     }

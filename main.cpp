@@ -1,91 +1,43 @@
 #include "stack.h"
+#include "print_func.cpp"
 
 int main(){
-
     stack_t stack = {};
-
-    size_t initial_capacity = 5;
-
-    // StackDump(&stack);
-
-    // StackPush(&stack, 11);
-    hack1;
-
-    // StackDump(&stack);
-
-    StackCtor(&stack, 3, nullptr);
-    StackCtor(&stack, 3, nullptr);
-    StackCtor(&stack, 3, nullptr);
-    StackCtor(&stack, 3, nullptr);
-
-    // StackDump(&stack);
-
-    StackPush(&stack, 1);
-
-    // StackDump(&stack);
-
-    // stack.hash_data = 0x32321UL;
-
-    StackPush(&stack, 2);
-
-    // StackDump(&stack);
     
-    StackPush(&stack, 3);
+    StackCtor(&stack, 12, nullptr);
 
-    StackPush(&stack, 4);
-    StackPush(&stack, 5);
-    StackPush(&stack, 6);
-    StackPush(&stack, 7);
+    StackCtor(&stack, 12, nullptr);
 
-    StackDump(&stack);
+    StackCtor(&stack, 12, nullptr);
 
-    StackPush(&stack, 8);
-
-    StackDump(&stack);
-
-    StackPush(&stack, 9);
+    StackPop(&stack);
 
     // StackDump(&stack);
-
-    // PRINT_LINE;
-
-    // StackPush(&stack, {230});
-
-    // StackDump(&stack);
-
-    // for (int i = 0; i < 60; i++) StackPush(&stack, {1000 - 7});
-
-    StackDump(&stack);
-
-    for (int i = 0; i < 40; ++i) StackPop(&stack);
 
     StackPush(&stack, 123);
 
-    StackDump(&stack);
+    // StackDump(&stack);
 
-    // PRINT_LINE;
+    StackPop(&stack);
 
-    // for (int i = 0; i < 16; ++i) StackPop(&stack);
+    //StackDump(&stack);
 
-    // PRINT_LINE;
+    StackPop(&stack);
 
-    StackDump(&stack);
+    StackPop(&stack);
 
-    // PRINT_LINE;
+    for (int i = 0; i < 10; ++i){
+        StackPush(&stack, 1337);
+        // StackDump(&stack);
+    }
 
-    // StackDtor(&stack);
+    for (int i = 0; i < 20; ++i) StackPush(&stack, 1488);
 
-    // PRINT_LINE;
+    StackPush(&stack, 23); StackPush(&stack, 23); StackPush(&stack, 23);
+
+    for (int i = 0; i < 35; i++) StackPop(&stack);
 
     StackDtor(&stack);
 
-    StackDtor(&stack);
-
-    StackDtor(&stack);
-
-    // PRINT_LINE;
-
-    StackDump(&stack);
-    
     return 0;
 }
