@@ -131,7 +131,7 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
     return stack;
 }
 
-Elem_t *ResizeStack(stack_t *stack, ResizeMode mode){
+Elem_t *StackResize(stack_t *stack, ResizeMode mode){
     ASSERT_OK(stack);
 
     size_t new_capacity = 0;
@@ -210,7 +210,7 @@ StatusCode StackPush(stack_t *stack, Elem_t value){
     if (stack->data == nullptr && stack->capacity == 0 ||
         stack->size == stack->capacity){
 
-        Elem_t *try_resize = ResizeStack(stack, INCREASE_CAPACITY);
+        Elem_t *try_resize = StackResize(stack, INCREASE_CAPACITY);
         if (try_resize == nullptr){
             stack->status |= CANT_ALLOCATE_MEMORY;
             StackDump(stack);
@@ -254,7 +254,7 @@ Elem_t StackPop(stack_t *stack){
 #endif
 
     if (stack->size <= stack->capacity / 4){
-        Elem_t *try_resize = ResizeStack(stack, DECREASE_CAPACITY);
+        Elem_t *try_resize = StackResize(stack, DECREASE_CAPACITY);
         if (try_resize == nullptr){
             stack->status |= CANT_ALLOCATE_MEMORY;
             StackDump(stack);
@@ -397,7 +397,6 @@ int StackVerify(stack_t *stack){
     if (stack->POTAM != (u_int64_t) (POTAM ^ ADDRESS(stack, stack_t)))
         status |= STACK_DATA_IS_RUINED | STACK_RIGHT_POTAM_RUINED;
             
-
     if (stack->data != nullptr && status & STACK_DATA_IS_RUINED == 0 && status & STACK_IS_DESTRUCTED == 0){
         void *ptr = (void *) stack->data - sizeof(u_int64_t);
             
@@ -410,7 +409,7 @@ int StackVerify(stack_t *stack){
             status |= STACK_DATA_IS_RUINED | DATA_RIGHT_POTAM_RUINED;
 
         ptr = ptr - sizeof(Elem_t) * stack->capacity;
-        
+
         stack->data = (Elem_t *) ptr;
     }
 #endif

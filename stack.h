@@ -21,9 +21,10 @@
 enum StatusCode{
     STACK_IS_OK                     = 0,
     RESULT_IS_UNKNOWN               = 0,
-    DUMP_COMMITED                   = 1 << 31,
-    STACK_IS_DESTRUCTED             = 1 << 30,
+
     STACK_IS_EMPTY                  = 1 << 29,
+    STACK_IS_DESTRUCTED             = 1 << 30,
+    DUMP_COMMITED                   = 1 << 31,
     
     STACK_IS_NULLPTR                = 1 << 0,
     STACK_IS_ALREADY_EMPTY          = 1 << 1,
@@ -35,14 +36,14 @@ enum StatusCode{
     STACK_CAPACITY_LESS_THAN_ZERO   = 1 << 6,
     STACK_SIZE_LESS_THAN_ZERO       = 1 << 7,
 
-
-    STACK_RESIZE_WRONG_PARAM        = 1 << 20,
+    STACK_RESIZE_WRONG_PARAM        = 1 << 14,
     
 #if DEBUG_MODE & STACK_INFO
+    STACK_INFO_IS_OK                = 1 << 15,
     STACK_IS_ALREADY_CONSTRUCTED    = 1 << 16,
+
     STACK_INFO_IS_EMPTY             = 1 << 21,
     STACK_INFO_RUINED               = 1 << 22,
-    STACK_INFO_IS_OK                = 1 << 15,
 #endif
 
 #if DEBUG_MODE & HIPPO_GUARD
@@ -118,10 +119,10 @@ void PrintHex(void *memory, size_t size, FILE *stream);
 
 StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE]);
 
-#define STACK_STATUS(status_code){   \
-    stack->status |= status_code;     \
-    StackDump(stack);                  \
-    return (StatusCode) stack->status;  \
+#define STACK_STATUS(status_code){              \
+    stack->status |= status_code;                \
+    StackDump(stack);                             \
+    return (StatusCode) stack->status;             \
 }
 
 // TODO DO WHILE(0)
@@ -149,8 +150,8 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
         StackCtor_(stack, capacity, __LINE__, __FILE__, __PRETTY_FUNCTION__, #stack, func);  \
     }
 #else
-    #define StackCtor(stack, capacity, func){             \
-        StackCtor_(stack, capacity, 0, "", "", "", func);  \
+    #define StackCtor(stack, capacity, func){                                               \
+        StackCtor_(stack, capacity, 0, "", "", "", func);                                    \
     }
 #endif
 
