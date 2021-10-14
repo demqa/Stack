@@ -57,14 +57,6 @@ stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const cha
         StackIsDestructed(stack)  != STACK_IS_DESTRUCTED){
         return nullptr;
     }
-    
-// #if DEBUG_MODE & STACK_INFO
-//     if (!(StackInfoStatus(stack) == STACK_INFO_IS_EMPTY)){
-//         stack->status |= STACK_IS_ALREADY_CONSTRUCTED;
-//         StackDump(stack);
-//         return nullptr;
-//     }
-// #endif    
 
 #if DEBUG_MODE & STACK_INFO
     stack->info.file = file;
@@ -153,12 +145,6 @@ Elem_t *StackResize(stack_t *stack, ResizeMode mode){
 
     if (new_capacity == stack->capacity) return stack->data;
 
-    if (mode == DECREASE_CAPACITY){
-        for (size_t i = new_capacity; i < stack->capacity; ++i){
-            stack->data[i] = POISONED_ELEM;
-        }
-    }
-
 #if DEBUG_MODE & HIPPO_GUARD
     void *try_realloc = realloc((void *)((char *)stack->data - sizeof(u_int64_t)), sizeof(Elem_t) * new_capacity + 2 * sizeof(u_int64_t));
 #else
@@ -180,6 +166,12 @@ Elem_t *StackResize(stack_t *stack, ResizeMode mode){
 #endif
 
     stack->data = (Elem_t *) try_realloc;
+
+    if (mode == DECREASE_CAPACITY){
+        for (size_t i = new_capacity; i < stack->capacity; ++i){
+            stack->data[i] = POISONED_ELEM;
+        }
+    }
 
     if (mode == INCREASE_CAPACITY){
         for (size_t i = stack->capacity; i < new_capacity; ++i){
@@ -371,7 +363,7 @@ int StackVerify(stack_t *stack){
     if (stack->hash_stack != CalculateHashStack(stack)){
         status |= STACK_DATA_IS_RUINED | STACK_HASH_STACK_RUINED;
     }
-    if (status & STACK_DATA_IS_RUINED == 0 && stack->hash_data  != CalculateHashData(stack)){
+    if (stack->hash_data  != CalculateHashData(stack)){
         status |= STACK_DATA_IS_RUINED | STACK_HASH_DATA_RUINED;
     }
 #endif
