@@ -2,9 +2,9 @@
 
 #define STACK_CONFIG_H
 
-#define DEBUG_MODE   07
-
 #include <stdio.h>
+
+#define DEBUG_MODE 07
 
 typedef int Elem_t;
 

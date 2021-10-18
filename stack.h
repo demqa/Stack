@@ -105,7 +105,8 @@ struct stack_t{
 
 };
 
-stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE], const char stack_name[STRING_MAX_SIZE], void (* PrintElem)(void *, size_t, FILE *));
+stack_t *StackCtor_(stack_t *stack, size_t capacity, int line_created, const char file[STRING_MAX_SIZE], const char func[STRING_MAX_SIZE],
+                    const char stack_name[STRING_MAX_SIZE], void (* PrintElem)(void *, size_t, FILE *));
 StatusCode StackDtor(stack_t *stack);
 Elem_t StackPop(stack_t *stack);
 Elem_t StackTop(stack_t *stack);
@@ -165,14 +166,24 @@ StatusCode StackDump_(stack_t *stack, int line, const char file[STRING_MAX_SIZE]
         printf("%s ", #error);  \
 }
 
-#define PRINT_WARNING(warn){  \
-    if (stack_status & warn){  \
-        printf("%s ", #warn);   \
-        stack->status &= ~warn;  \
-    }                             \
-}
-
+#if DEBUG_MODE & HASH_GUARD
+    #define PRINT_WARNING(warn){                         \
+        if (stack_status & warn){                         \
+            printf("%s ", #warn);                          \
+            stack->status &= ~warn;                         \
+            stack->hash_stack = CalculateHashStack(stack);   \
+        }                                                     \
+    }
+#else
+    #define PRINT_WARNING(warn){                       \
+        if (stack_status & warn){                       \
+            printf("%s ", #warn);                        \
+            stack->status &= ~warn;                       \
+        }                                                  \
+    }
+#endif     
 
 #define ADDRESS(ptr, type) (u_int64_t)(ptr - (type *)nullptr)
+
 
 #endif
